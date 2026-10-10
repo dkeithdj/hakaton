@@ -1,22 +1,32 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "hackathon",
-  "main": "worker/index.ts",
-  "compatibility_date": "2026-08-01",
-  "observability": { "enabled": true },
-  "assets": {
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "hackathon",
-      // Replace with the id printed by `wrangler d1 create hackathon`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
-    }
-  ],
-  "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "hackathon-uploads" }]
-  // Secrets (set with `wrangler secret put`): ADMIN_PASSWORD, SESSION_SECRET
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hakaton",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-08-01",
+	"observability": {
+		"enabled": true
+	},
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"d1_databases": [
+		{
+			// The binding is the variable name the Worker code reads (env.DB). Keep it as DB.
+			"binding": "DB",
+			"database_name": "hakaton",
+			"database_id": "62b1c763-810e-4781-8cb4-1d0070e6e906",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"bucket_name": "hakaton-uploads",
+			// Same here: the code reads env.UPLOADS.
+			"binding": "UPLOADS"
+		}
+	]
+	// Secrets (set with `wrangler secret put`): ADMIN_PASSWORD, SESSION_SECRET
 }

@@ -1,4 +1,4 @@
-# Hackathon
+# Hakaton
 
 A quick platform on hosting a hackathon.
 
@@ -66,8 +66,8 @@ Each team signs in on `/participant` by picking its team and entering that team'
 ## Deploying to Cloudflare
 
 ```sh
-npx wrangler d1 create hackathon            # copy the database_id into wrangler.jsonc
-npx wrangler r2 bucket create hackathon-uploads
+npx wrangler d1 create hakaton              # copy the database_id into wrangler.jsonc
+npx wrangler r2 bucket create hakaton-uploads
 npm run db:migrate:remote
 npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put SESSION_SECRET      # any long random string

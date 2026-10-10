@@ -1,5 +1,5 @@
 {
-  "name": "hackathon",
+  "name": "hakaton",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,11 +8,14 @@
     "build": "wrangler types && tsc -b && vite build",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "ci:build": "([ -f .dev.vars ] || cp .dev.vars.example .dev.vars) && npm run build && npm test",
+    "ci:deploy": "wrangler d1 migrations apply hakaton --remote && wrangler deploy",
     "typegen": "wrangler types",
     "typecheck": "wrangler types && tsc -b",
     "test": "vitest run && vitest run --config vitest.ui.config.ts",
-    "db:migrate:local": "wrangler d1 migrations apply hackathon --local",
-    "db:migrate:remote": "wrangler d1 migrations apply hackathon --remote"
+    "db:migrate:local": "wrangler d1 migrations apply hakaton --local",
+    "db:migrate:remote": "wrangler d1 migrations apply hakaton --remote",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
