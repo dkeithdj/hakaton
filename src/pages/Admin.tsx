@@ -1,0 +1,472 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DownloadIcon, Trash2Icon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { FullPageMessage, HackTimer, PageShell, ResultsList, Section, VoteQr } from "@/components/event";
+import { LoginCard } from "@/components/LoginCard";
+import { ResourceEditor, type EditorField } from "@/components/ResourceEditor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { api, errorMessage, formatBytes, formatDuration, useEventState, useMe, useNow, type ClientState } from "@/lib/api";
+import {
+  getPhase,
+  type AdminTeam,
+  type Material,
+  type Milestone,
+  type Prompt,
+  type PublicSettings,
+  type Settings,
+  type TeamResult,
+  type Tool,
+  type Upload,
+} from "../../shared/types";
+
+interface AdminData {
+  settings: Settings;
+  teams: AdminTeam[];
+  materials: Material[];
+  prompts: Prompt[];
+  tools: Tool[];
+  uploads: Upload[];
+  results: TeamResult[];
+}
+
+const sortField: EditorField = { key: "sort", label: "Order", type: "number" };
+
+export default function Admin() {
+  const me = useMe();
+  const { data: state } = useEventState(3000);
+  if (me.isPending || !state) return <FullPageMessage>Loading…</FullPageMessage>;
+  if (me.data?.role !== "admin") {
+    return <LoginCard role="admin" title={`${state.settings.eventName} · Admin`} description="Enter the admin password." />;
+  }
+  return <Dashboard state={state} />;
+}
+
+function Dashboard({ state }: { state: ClientState }) {
+  const queryClient = useQueryClient();
+  const now = useNow(state.clockOffset);
+  const admin = useQuery({
+    queryKey: ["admin"],
+    queryFn: () => api<AdminData>("/api/admin/data"),
+    refetchInterval: 5000,
+  });
+  const logout = useMutation({
+    mutationFn: () => api("/api/logout", { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
+
+  const { topics, schedule } = state;
+  const teamFields: EditorField[] = [
+    { key: "name", label: "Team name", type: "text" },
+    { key: "members", label: "Members", type: "lines", placeholder: "One member per line" },
+    { key: "password", label: "Team password", type: "text", placeholder: "Leave blank to generate one" },
+    {
+      key: "topicId",
+      label: "Topic",
+      type: "option",
+      options: topics.map((topic) => ({ id: topic.id, label: topic.title })),
+    },
+    sortField,
+  ];
+
+  return (
+    <PageShell
+      state={state}
+      now={now}
+      actions={
+        <Button size="sm" variant="outline" onClick={() => logout.mutate()}>
+          Sign out
+        </Button>
+      }
+    >
+      <Tabs defaultValue="control">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="control">Control</TabsTrigger>
+          <TabsTrigger value="teams">Teams</TabsTrigger>
+          <TabsTrigger value="topics">Topics</TabsTrigger>
+          <TabsTrigger value="schedule">Schedule</TabsTrigger>
+          <TabsTrigger value="content">Resources & prompts</TabsTrigger>
+          <TabsTrigger value="uploads">Uploads</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="control" className="flex flex-col gap-6">
+          <Control state={state} now={now} results={admin.data?.results ?? []} />
+        </TabsContent>
+        <TabsContent value="teams">
+          <ResourceEditor
+            resource="teams"
+            title="Teams"
+            description="Give each team its password. A team can only open its own workspace. Changing a password signs that team out."
+            singular="team"
+            items={(admin.data?.teams ?? []) as never}
+            fields={teamFields}
+          />
+        </TabsContent>
+        <TabsContent value="topics">
+          <ResourceEditor
+            resource="topics"
+            title="Topics"
+            description="Starting points that teams can choose from."
+            singular="topic"
+            items={topics as never}
+            fields={[
+              { key: "title", label: "Title", type: "text" },
+              { key: "description", label: "Description", type: "textarea" },
+              sortField,
+            ]}
+          />
+        </TabsContent>
+        <TabsContent value="schedule">
+          <ResourceEditor
+            resource="schedule"
+            title="Program flow"
+            description="Shown on the public page."
+            singular="schedule item"
+            items={schedule as never}
+            fields={[
+              { key: "timeLabel", label: "Time", type: "text", placeholder: "1:00 PM" },
+              { key: "title", label: "Title", type: "text" },
+              { key: "description", label: "Description", type: "textarea" },
+              sortField,
+            ]}
+          />
+        </TabsContent>
+        <TabsContent value="content" className="flex flex-col gap-6">
+          <ResourceEditor
+            resource="materials"
+            title="Organizer resources"
+            description="Links and templates you provide to every team, such as a pitch deck template to paste into their AI tool. Fill in a link, template text, or both."
+            singular="resource"
+            items={(admin.data?.materials ?? []) as never}
+            fields={[
+              { key: "title", label: "Title", type: "text" },
+              { key: "description", label: "Description", type: "textarea", hideInTable: true },
+              { key: "url", label: "Link (optional)", type: "text", placeholder: "https://" },
+              {
+                key: "body",
+                label: "Template text (optional)",
+                type: "textarea",
+                placeholder: "Text participants can copy into their AI tool",
+                hideInTable: true,
+              },
+              sortField,
+            ]}
+          />
+          <ResourceEditor
+            resource="prompts"
+            title="Prompt library"
+            singular="prompt"
+            items={(admin.data?.prompts ?? []) as never}
+            fields={[
+              { key: "title", label: "Title", type: "text" },
+              { key: "tool", label: "Recommended tool", type: "text" },
+              { key: "body", label: "Prompt", type: "textarea", hideInTable: true },
+              sortField,
+            ]}
+          />
+          <ResourceEditor
+            resource="tools"
+            title="Toolbox"
+            singular="tool"
+            items={(admin.data?.tools ?? []) as never}
+            fields={[
+              { key: "name", label: "Name", type: "text" },
+              { key: "description", label: "Description", type: "textarea" },
+              { key: "url", label: "Link", type: "text", placeholder: "https://" },
+              sortField,
+            ]}
+          />
+        </TabsContent>
+        <TabsContent value="uploads">
+          <Uploads state={state} uploads={admin.data?.uploads ?? []} />
+        </TabsContent>
+        <TabsContent value="settings">{admin.data && <SettingsForm settings={admin.data.settings} />}</TabsContent>
+      </Tabs>
+    </PageShell>
+  );
+}
+
+function Control({ state, now, results }: { state: ClientState; now: number; results: TeamResult[] }) {
+  const queryClient = useQueryClient();
+  const { settings } = state;
+  const phase = getPhase(settings, now);
+
+  const action = useMutation({
+    mutationFn: (path: string) => api<PublicSettings>(`/api/admin/${path}`, { method: "POST" }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<ClientState>(["state"], (current) => current && { ...current, settings: updated });
+      queryClient.invalidateQueries({ queryKey: ["state"] });
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const running = settings.hackEndsAt !== null && settings.hackEndsAt > now;
+  const paused = settings.hackPausedRemainingMs !== null;
+  const votingOpen = settings.voteEndsAt !== null && now < settings.voteEndsAt;
+  const votingClosed = settings.voteEndsAt !== null && !votingOpen;
+
+  return (
+    <>
+      <Section title="Hackathon timer" description={`Duration: ${settings.hackDurationMin} minutes. Change it under Settings.`}>
+        <div className="flex flex-wrap items-center gap-6">
+          <HackTimer settings={settings} now={now} className="text-5xl" />
+          <div className="flex flex-wrap gap-2">
+            {running ? (
+              <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate("timer/pause")}>
+                Pause
+              </Button>
+            ) : (
+              <Button disabled={action.isPending} onClick={() => action.mutate("timer/start")}>
+                {paused ? "Resume" : settings.hackEndsAt !== null ? "Restart" : "Start"}
+              </Button>
+            )}
+            <ConfirmButton
+              title="Reset the hackathon timer?"
+              description="The countdown goes back to the full duration and stops."
+              confirmLabel="Reset"
+              onConfirm={() => action.mutate("timer/reset")}
+            >
+              <Button variant="ghost">Reset</Button>
+            </ConfirmButton>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Voting"
+        description={`Window: ${settings.voteDurationSec} seconds. ${state.ballotCount} ${state.ballotCount === 1 ? "vote" : "votes"} registered.`}
+      >
+        <div className="flex flex-wrap items-start gap-8">
+          <div className="flex flex-col gap-4">
+            <div className="font-mono text-5xl font-semibold tabular-nums">
+              {votingOpen ? formatDuration(settings.voteEndsAt! - now) : votingClosed ? "Closed" : "Not open"}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {votingOpen ? (
+                <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate("voting/close")}>
+                  Close now
+                </Button>
+              ) : (
+                <Button disabled={action.isPending} onClick={() => action.mutate("voting/open")}>
+                  {votingClosed ? "Reopen voting" : "Open voting"}
+                </Button>
+              )}
+              {votingClosed &&
+                (settings.resultsPublished ? (
+                  <Button variant="outline" disabled={action.isPending} onClick={() => action.mutate("voting/unpublish")}>
+                    Hide results
+                  </Button>
+                ) : (
+                  <Button disabled={action.isPending} onClick={() => action.mutate("voting/publish")}>
+                    Publish results
+                  </Button>
+                ))}
+              <ConfirmButton
+                title="Delete all votes?"
+                description="Every ballot is erased and voting returns to not open. This cannot be undone."
+                confirmLabel="Delete votes"
+                onConfirm={() => action.mutate("voting/reset")}
+              >
+                <Button variant="destructive">Reset votes</Button>
+              </ConfirmButton>
+            </div>
+          </div>
+          <VoteQr size={160} />
+        </div>
+      </Section>
+
+      <Section
+        title="Scores"
+        description={
+          phase === "results" ? "Published. Everyone can see these." : "Only you can see these until you publish results."
+        }
+      >
+        {state.teams.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Create teams first.</p>
+        ) : (
+          <ResultsList teams={state.teams} results={results} />
+        )}
+      </Section>
+    </>
+  );
+}
+
+function Uploads({ state, uploads }: { state: ClientState; uploads: Upload[] }) {
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (id: number) => api(`/api/admin/uploads/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin"] }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  return (
+    <Section title="Backup uploads" description="Pitch decks and demo videos sent by teams.">
+      {uploads.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No uploads yet.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Team</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>File</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Uploaded</TableHead>
+              <TableHead className="w-24" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {uploads.map((upload) => (
+              <TableRow key={upload.id}>
+                <TableCell>{state.teams.find((team) => team.id === upload.teamId)?.name ?? "—"}</TableCell>
+                <TableCell>{upload.kind === "deck" ? "Pitch deck" : "Demo video"}</TableCell>
+                <TableCell className="max-w-64 truncate">{upload.filename}</TableCell>
+                <TableCell>{formatBytes(upload.size)}</TableCell>
+                <TableCell>{new Date(upload.createdAt).toLocaleTimeString()}</TableCell>
+                <TableCell className="text-right">
+                  <Button asChild size="icon-sm" variant="ghost">
+                    <a href={`/api/admin/uploads/${upload.id}/download`} aria-label={`Download ${upload.filename}`}>
+                      <DownloadIcon />
+                    </a>
+                  </Button>
+                  <ConfirmButton
+                    title="Delete this file?"
+                    description="The file is removed from storage. This cannot be undone."
+                    confirmLabel="Delete"
+                    onConfirm={() => remove.mutate(upload.id)}
+                  >
+                    <Button size="icon-sm" variant="ghost" aria-label={`Delete ${upload.filename}`}>
+                      <Trash2Icon />
+                    </Button>
+                  </ConfirmButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </Section>
+  );
+}
+
+function milestonesToText(milestones: Milestone[]): string {
+  return milestones.map((milestone) => `${milestone.title} | ${milestone.minutes}`).join("\n");
+}
+
+function textToMilestones(text: string): Milestone[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const divider = line.lastIndexOf("|");
+      if (divider === -1) return { title: line, minutes: 0 };
+      return { title: line.slice(0, divider).trim(), minutes: Number(line.slice(divider + 1)) || 0 };
+    });
+}
+
+function SettingsForm({ settings }: { settings: Settings }) {
+  const queryClient = useQueryClient();
+  const toForm = (source: Settings) => ({
+    eventName: source.eventName,
+    tagline: source.tagline,
+    hackDurationMin: String(source.hackDurationMin),
+    voteDurationSec: String(source.voteDurationSec),
+    guidelines: source.guidelines,
+    milestones: milestonesToText(source.milestones),
+  });
+  const [form, setForm] = useState(() => toForm(settings));
+  const [dirty, setDirty] = useState(false);
+
+  // Follow server changes (another admin tab) unless there are unsaved edits.
+  const serialized = JSON.stringify(toForm(settings));
+  useEffect(() => {
+    if (!dirty) setForm(JSON.parse(serialized));
+  }, [serialized, dirty]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      api("/api/admin/settings", {
+        method: "PUT",
+        body: {
+          ...form,
+          hackDurationMin: Number(form.hackDurationMin),
+          voteDurationSec: Number(form.voteDurationSec),
+          milestones: textToMilestones(form.milestones),
+        },
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin"] }),
+        queryClient.invalidateQueries({ queryKey: ["state"] }),
+      ]);
+      setDirty(false);
+      toast.success("Settings saved");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const field = (key: keyof typeof form) => ({
+    id: `settings-${key}`,
+    value: form[key],
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setDirty(true);
+      setForm((current) => ({ ...current, [key]: event.target.value }));
+    },
+  });
+
+  return (
+    <Section title="Settings" description="Duration changes apply the next time the timer or voting starts.">
+      <form
+        className="flex flex-col gap-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="settings-eventName">Event name</Label>
+            <Input {...field("eventName")} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="settings-tagline">Tagline</Label>
+            <Input {...field("tagline")} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="settings-hackDurationMin">Hackathon duration (minutes)</Label>
+            <Input type="number" min={1} {...field("hackDurationMin")} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="settings-voteDurationSec">Voting window (seconds)</Label>
+            <Input type="number" min={10} {...field("voteDurationSec")} />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="settings-guidelines">Presentation guidelines</Label>
+          <Textarea rows={6} {...field("guidelines")} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="settings-milestones">Checklist milestones</Label>
+          <Textarea rows={6} {...field("milestones")} />
+          <p className="text-xs text-muted-foreground">
+            One per line as “Title | minutes”. Reordering or removing lines shifts what teams have already ticked.
+          </p>
+        </div>
+        <div>
+          <Button type="submit" disabled={save.isPending || !dirty}>
+            Save settings
+          </Button>
+        </div>
+      </form>
+    </Section>
+  );
+}
