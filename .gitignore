@@ -1,0 +1,14 @@
+node_modules
+dist
+.wrangler
+.dev.vars
+*.tsbuildinfo
+worker-configuration.d.ts
+.DS_Store
+
+# graphify: keep the graph and report, ignore caches, snapshots, and machine-local state
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
+
+.claude/settings.local.json
