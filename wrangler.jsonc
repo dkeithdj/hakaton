@@ -27,6 +27,12 @@
 			// Same here: the code reads env.UPLOADS.
 			"binding": "UPLOADS"
 		}
-	]
-	// Secrets (set with `wrangler secret put`): ADMIN_PASSWORD, SESSION_SECRET
+	],
+	// Set with `wrangler secret put`. Declared here so `wrangler types` generates them without a .dev.vars file.
+	"secrets": {
+		"required": [
+			"ADMIN_PASSWORD",
+			"SESSION_SECRET"
+		]
+	}
 }
