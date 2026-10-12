@@ -10,6 +10,7 @@ npm test                   # API tests (Workers runtime), then page smoke tests 
 npm run typecheck          # wrangler types && tsc -b
 npm run build              # typegen + typecheck + vite build
 npm run db:migrate:local   # apply D1 migrations to the local database
+npm run db:seed:local      # replace resources and prompts with seeds/production.sql
 npm run deploy             # build, then wrangler deploy
 ```
 
@@ -29,6 +30,7 @@ First-time setup: `cp .dev.vars.example .dev.vars`, then `npm run db:migrate:loc
 | `src/components/` | App components; `ui/` holds shadcn components |
 | `src/lib/api.ts` | `api()` fetch wrapper, `ApiError`, `useEventState` polling hook |
 | `migrations/` | D1 migrations, applied in numeric order |
+| `seeds/` | Event content run by hand with `db:seed:*`; replaces resources and prompts |
 | `test/` | API tests under `@cloudflare/vitest-pool-workers` |
 | `test-ui/` | Page smoke tests under jsdom |
 

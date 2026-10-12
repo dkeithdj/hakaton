@@ -8,7 +8,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { FullPageMessage, HackTimer, PageShell, ScheduleList, Section, sgdLabel, VoteQr } from "@/components/event";
+import {
+  FullPageMessage,
+  HackTimer,
+  PageShell,
+  ScheduleList,
+  Section,
+  SGD_URL,
+  sgdLabel,
+  SgdTooltip,
+  VoteQr,
+} from "@/components/event";
 import { LoginCard } from "@/components/LoginCard";
 import { PitchTimer } from "@/components/PitchTimer";
 import { RichText } from "@/components/RichText";
@@ -161,6 +171,14 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
                   ? "Pick one or more Sustainable Development Goals to build on. You can change them any time."
                   : `${selected.length} of ${topics.length} goals chosen`
               }
+              action={
+                <Button asChild size="sm" variant="outline">
+                  <a href={SGD_URL} target="_blank" rel="noreferrer">
+                    <ExternalLinkIcon />
+                    About the SGDs
+                  </a>
+                </Button>
+              }
             >
               <div className="flex flex-col gap-3">
                 {team.members.length > 0 && <p className="text-sm text-muted-foreground">{team.members.join(", ")}</p>}
@@ -168,30 +186,30 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
                   {topics.map((topic) => {
                     const active = team.topicIds.includes(topic.id);
                     return (
-                      <button
-                        key={topic.id}
-                        type="button"
-                        aria-pressed={active}
-                        aria-label={sgdLabel(topic)}
-                        title={topic.description || undefined}
-                        onClick={() =>
-                          updateTeam.mutate({
-                            topicIds: active
-                              ? team.topicIds.filter((id) => id !== topic.id)
-                              : [...team.topicIds, topic.id],
-                          })
-                        }
-                        className={cn(
-                          "relative flex aspect-square flex-col justify-between rounded-lg p-1.5 text-left text-white transition",
-                          active && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
-                          selected.length > 0 && !active && "opacity-45 hover:opacity-100",
-                        )}
-                        style={{ backgroundColor: topic.color || "var(--primary)" }}
-                      >
-                        <span className="text-xl leading-none font-bold">{topic.sort}</span>
-                        {active && <CheckIcon className="absolute top-1.5 right-1.5 size-4" />}
-                        <span className="text-[0.625rem] leading-tight font-semibold uppercase">{topic.title}</span>
-                      </button>
+                      <SgdTooltip key={topic.id} topic={topic}>
+                        <button
+                          type="button"
+                          aria-pressed={active}
+                          aria-label={sgdLabel(topic)}
+                          onClick={() =>
+                            updateTeam.mutate({
+                              topicIds: active
+                                ? team.topicIds.filter((id) => id !== topic.id)
+                                : [...team.topicIds, topic.id],
+                            })
+                          }
+                          className={cn(
+                            "relative flex aspect-square flex-col justify-between rounded-lg p-1.5 text-left text-white transition",
+                            active && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
+                            selected.length > 0 && !active && "opacity-45 hover:opacity-100",
+                          )}
+                          style={{ backgroundColor: topic.color || "var(--primary)" }}
+                        >
+                          <span className="text-xl leading-none font-bold">{topic.sort}</span>
+                          {active && <CheckIcon className="absolute top-1.5 right-1.5 size-4" />}
+                          <span className="text-[0.625rem] leading-tight font-semibold uppercase">{topic.title}</span>
+                        </button>
+                      </SgdTooltip>
                     );
                   })}
                 </div>

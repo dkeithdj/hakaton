@@ -230,6 +230,12 @@ it("participant page opens only the signed-in team's workspace", async () => {
   expect(await screen.findByText("2 of 2 complete")).toBeTruthy();
   expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ progress: [0, 1] });
 
+  // Each goal explains itself on hover, and the section links out to the UN's goal pages.
+  expect(screen.getByRole("link", { name: "About the SGDs" }).getAttribute("href")).toBe("https://sdgs.un.org/goals");
+  await user.hover(screen.getByRole("button", { name: "SGD 1: No Poverty" }));
+  expect((await screen.findByRole("tooltip")).textContent).toContain("End poverty.");
+  await user.unhover(screen.getByRole("button", { name: "SGD 1: No Poverty" }));
+
   // A team can build on more than one goal.
   expect(screen.getByRole("button", { name: "SGD 4: Quality Education" }).getAttribute("aria-pressed")).toBe("true");
   routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2, 1], progress: [0, 1], sort: 1 };

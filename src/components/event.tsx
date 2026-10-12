@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration, type ClientState } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getPhase, type Phase, type PublicSettings, type ScheduleItem, type Team, type TeamResult, type Topic } from "../../shared/types";
@@ -29,18 +30,35 @@ export function sgdLabel(topic: Topic): string {
   return `SGD ${topic.sort}: ${topic.title}`;
 }
 
+export const SGD_URL = "https://sdgs.un.org/goals";
+
+/** Spells a goal out on hover or focus. Needs the provider that `PageShell` sets up. */
+export function SgdTooltip({ topic, children }: { topic: Topic; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent className="flex-col items-start gap-0.5 text-left text-sm">
+        <span className="font-semibold">{sgdLabel(topic)}</span>
+        {topic.description && <span>{topic.description}</span>}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 /** A goal's number on its own color, for places too tight to spell the goal out. */
 export function SgdChip({ topic }: { topic: Topic }) {
   return (
-    <span
-      role="img"
-      aria-label={sgdLabel(topic)}
-      title={sgdLabel(topic)}
-      className="inline-flex size-6 items-center justify-center rounded-md text-xs font-bold text-white"
-      style={{ backgroundColor: topic.color || "var(--primary)" }}
-    >
-      {topic.sort}
-    </span>
+    <SgdTooltip topic={topic}>
+      <span
+        role="img"
+        aria-label={sgdLabel(topic)}
+        tabIndex={0}
+        className="inline-flex size-6 items-center justify-center rounded-md text-xs font-bold text-white"
+        style={{ backgroundColor: topic.color || "var(--primary)" }}
+      >
+        {topic.sort}
+      </span>
+    </SgdTooltip>
   );
 }
 
@@ -66,37 +84,39 @@ export function PageShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-3 px-4 py-2">
-          <Link to="/" className="flex items-center gap-2 font-heading text-lg font-semibold">
-            <img src="/assets/devcon-icon.svg" alt="" className="size-6" />
-            {state.settings.eventName}
-          </Link>
-          <PhaseBadge phase={getPhase(state.settings, now)} />
-          <nav className="ml-auto flex items-center gap-1 text-sm">
-            {actions}
-            <NavLink to="/">Live</NavLink>
-            <NavLink to="/participant">Participants</NavLink>
-            <NavLink to="/vote">Vote</NavLink>
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-4 p-4">{children}</main>
-      {/* The partner logos are white, so the footer stays dark in both themes. */}
-      <footer className="bg-brand-950">
-        <div className="mx-auto flex max-w-[100rem] flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 py-2 text-xs tracking-widest text-brand-200 uppercase">
-          <span className="flex items-center gap-3">
-            Hosted by
-            <img src="/assets/devcondavao.svg" alt="DEVCON Davao" className="h-14 w-auto" />
-          </span>
-          <span className="flex items-center gap-3">
-            A program of
-            <img src="/assets/sheisdevconlogo.png" alt="She is DEVCON" className="h-7 w-auto" />
-          </span>
-        </div>
-      </footer>
-    </div>
+    <TooltipProvider>
+      <div className="flex min-h-svh flex-col">
+        <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <div className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-3 px-4 py-2">
+            <Link to="/" className="flex items-center gap-2 font-heading text-lg font-semibold">
+              <img src="/assets/devcon-icon.svg" alt="" className="size-6" />
+              {state.settings.eventName}
+            </Link>
+            <PhaseBadge phase={getPhase(state.settings, now)} />
+            <nav className="ml-auto flex items-center gap-1 text-sm">
+              {actions}
+              <NavLink to="/">Live</NavLink>
+              <NavLink to="/participant">Participants</NavLink>
+              <NavLink to="/vote">Vote</NavLink>
+            </nav>
+          </div>
+        </header>
+        <main className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-4 p-4">{children}</main>
+        {/* The partner logos are white, so the footer stays dark in both themes. */}
+        <footer className="bg-brand-950">
+          <div className="mx-auto flex max-w-[100rem] flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 py-2 text-xs tracking-widest text-brand-200 uppercase">
+            <span className="flex items-center gap-3">
+              Hosted by
+              <img src="/assets/devcondavao.svg" alt="DEVCON Davao" className="h-14 w-auto" />
+            </span>
+            <span className="flex items-center gap-3">
+              A program of
+              <img src="/assets/sheisdevconlogo.png" alt="She is DEVCON" className="h-7 w-auto" />
+            </span>
+          </div>
+        </footer>
+      </div>
+    </TooltipProvider>
   );
 }
 
