@@ -154,10 +154,18 @@ describe("auth", () => {
     expect((await admin.get("/api/admin/data")).body.teams[0].password).toBe("pass-A");
   });
 
-  it("limits a team to changing its topic and progress", async () => {
+  it("limits a team to changing its topics and progress", async () => {
     const admin = await adminClient();
     const [teamId] = await createTeams(admin, ["A"]);
     const client = await teamClient(teamId, "A");
+    const topics: number[] = [];
+    for (const title of ["No Poverty", "Quality Education"]) {
+      topics.push((await admin.post("/api/admin/resources/topics", { title, color: "#E5243B" })).body.id);
+    }
+    const chosen = await client.put(`/api/participant/teams/${teamId}`, { topicIds: [topics[1], topics[0]] });
+    expect(chosen.body.topicIds).toEqual([...topics].sort((a, b) => a - b));
+    expect((await client.put(`/api/participant/teams/${teamId}`, { topicIds: [topics[0], 999_999] })).status).toBe(400);
+    expect((await client.put(`/api/participant/teams/${teamId}`, { topicIds: [] })).body.topicIds).toEqual([]);
     const updated = await client.put(`/api/participant/teams/${teamId}`, {
       name: "Renamed",
       password: "hijacked",

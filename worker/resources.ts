@@ -23,7 +23,7 @@ export const RESOURCES = {
     fields: [
       { key: "name", column: "name", type: "string", required: true, max: 100 },
       { key: "members", column: "members", type: "stringArray" },
-      { key: "topicId", column: "topic_id", type: "nullableInt" },
+      { key: "topicIds", column: "topic_ids", type: "intArray", max: 1_000_000 },
       { key: "progress", column: "progress", type: "intArray" },
       { key: "password", column: "password", type: "string", max: 100 },
       sort,
@@ -34,6 +34,7 @@ export const RESOURCES = {
     fields: [
       { key: "title", column: "title", type: "string", required: true, max: 200 },
       { key: "description", column: "description", type: "string", max: 5000 },
+      { key: "color", column: "color", type: "string", max: 20 },
       sort,
     ],
   },
@@ -71,6 +72,8 @@ export const RESOURCES = {
       { key: "name", column: "name", type: "string", required: true, max: 100 },
       { key: "description", column: "description", type: "string", max: 5000 },
       { key: "url", column: "url", type: "string", max: 500 },
+      { key: "vendor", column: "vendor", type: "string", max: 50 },
+      { key: "color", column: "color", type: "string", max: 20 },
       sort,
     ],
   },
@@ -116,7 +119,7 @@ function toColumnValue(field: Field, value: unknown): string | number | null {
     case "intArray": {
       if (!Array.isArray(value) || value.length > 50) bad(`${field.key} must be a list`);
       for (const item of value) {
-        if (!isInt(item) || item < 0 || item > 50) bad(`${field.key} has an invalid entry`);
+        if (!isInt(item) || item < 0 || item > (field.max ?? 50)) bad(`${field.key} has an invalid entry`);
       }
       return JSON.stringify([...new Set(value as number[])].sort((a, b) => a - b));
     }

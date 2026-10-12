@@ -8,15 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FullPageMessage, HackTimer, PageShell, ScheduleList, Section, VoteQr } from "@/components/event";
+import { FullPageMessage, HackTimer, PageShell, ScheduleList, Section, sgdLabel, VoteQr } from "@/components/event";
 import { LoginCard } from "@/components/LoginCard";
 import { PitchTimer } from "@/components/PitchTimer";
 import { TeamUploads } from "@/components/TeamUploads";
 import { api, errorMessage, useEventState, useMe, useNow, type ClientState } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { getPhase, type Material, type Me, type Prompt, type Team, type Tool } from "../../shared/types";
-
-const NO_TOPIC = "none";
 
 export default function Participant() {
   const me = useMe();
@@ -53,7 +51,7 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
   const phase = getPhase(settings, now);
 
   const updateTeam = useMutation({
-    mutationFn: (patch: Partial<Pick<Team, "topicId" | "progress">>) =>
+    mutationFn: (patch: Partial<Pick<Team, "topicIds" | "progress">>) =>
       api<Team>(`/api/participant/teams/${team!.id}`, { method: "PUT", body: patch }),
     onSuccess: (updated) => {
       queryClient.setQueryData<ClientState>(["state"], (current) =>
@@ -75,6 +73,10 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
 
   const milestones = settings.milestones;
   const done = team ? team.progress.filter((index) => index < milestones.length) : [];
+  const selected = team ? topics.filter((topic) => team.topicIds.includes(topic.id)) : [];
+  const tools = content.data?.tools ?? [];
+  const googleTools = tools.filter(isGoogle);
+  const otherTools = tools.filter((tool) => !isGoogle(tool));
 
   return (
     <PageShell
@@ -122,177 +124,260 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
         </DialogContent>
       </Dialog>
 
-      <section className="flex flex-col items-center gap-2 py-4 text-center">
-        <p className="text-sm tracking-widest text-muted-foreground uppercase">
-          {phase === "upcoming" ? "Sprint duration" : "Sprint time remaining"}
-        </p>
-        <HackTimer settings={settings} now={now} className="text-6xl sm:text-7xl" />
-      </section>
-
-      {phase === "voting" && (
-        <Section title="Voting is live!" description="Scan to rate every team's pitch and demo.">
-          <VoteQr />
-        </Section>
-      )}
-
-      <div
-        role="note"
-        className="flex gap-3 rounded-xl border-2 border-amber-500/60 bg-amber-500/10 p-4 text-amber-100"
-      >
-        <LightbulbIcon className="mt-0.5 size-5 shrink-0 text-amber-400" />
-        <div className="flex flex-col gap-1">
-          <p className="font-semibold">Everything here is a guide, not a rule.</p>
-          <p className="text-sm">
-            The topics, prompts, and tools are starting points. Build on any topic and use whatever tools get your team
-            to a working demo.
+      <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded-2xl bg-subay px-6 py-3 text-white">
+        <div>
+          {team && <p className="font-heading text-xl font-semibold">{team.name}</p>}
+          <p className="text-sm tracking-widest text-white/85 uppercase">
+            {phase === "upcoming" ? "Sprint duration" : "Sprint time remaining"}
           </p>
         </div>
-      </div>
+        <HackTimer settings={settings} now={now} className="text-5xl leading-none text-white sm:text-6xl" />
+      </section>
 
-      {team && (
-        <Section title="Your challenge" description={team.members.join(", ") || undefined}>
-          <div className="flex flex-col gap-3">
-            <p className="text-lg font-medium">{team.name}</p>
-            <Select
-              value={team.topicId === null ? NO_TOPIC : String(team.topicId)}
-              onValueChange={(value) => updateTeam.mutate({ topicId: value === NO_TOPIC ? null : Number(value) })}
+      <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="flex flex-col gap-4">
+          {phase === "voting" && (
+            <Section title="Voting is live!" description="Scan to rate every team's pitch and demo.">
+              <VoteQr />
+            </Section>
+          )}
+
+          <div role="note" className="flex gap-3 rounded-xl border-2 border-warning/60 bg-warning/10 p-3">
+            <LightbulbIcon className="mt-0.5 size-5 shrink-0 text-warning" />
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold">Everything here is a guide, not a rule.</p>
+              <p className="text-sm">
+                The goals, prompts, and tools are starting points. Use whatever tools get your team to a working demo.
+              </p>
+            </div>
+          </div>
+
+          {team && (
+            <Section
+              title="Your challenge"
+              description={
+                selected.length === 0
+                  ? "Pick one or more Sustainable Development Goals to build on. You can change them any time."
+                  : `${selected.length} of ${topics.length} goals chosen`
+              }
             >
-              <SelectTrigger className="w-full sm:w-96" aria-label="Topic">
-                <SelectValue placeholder="Choose a topic" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_TOPIC}>No topic chosen</SelectItem>
-                {topics.map((topic) => (
-                  <SelectItem key={topic.id} value={String(topic.id)}>
-                    {topic.title}
-                  </SelectItem>
+              <div className="flex flex-col gap-3">
+                {team.members.length > 0 && <p className="text-sm text-muted-foreground">{team.members.join(", ")}</p>}
+                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:grid-cols-4 2xl:grid-cols-6">
+                  {topics.map((topic) => {
+                    const active = team.topicIds.includes(topic.id);
+                    return (
+                      <button
+                        key={topic.id}
+                        type="button"
+                        aria-pressed={active}
+                        aria-label={sgdLabel(topic)}
+                        title={topic.description || undefined}
+                        onClick={() =>
+                          updateTeam.mutate({
+                            topicIds: active
+                              ? team.topicIds.filter((id) => id !== topic.id)
+                              : [...team.topicIds, topic.id],
+                          })
+                        }
+                        className={cn(
+                          "relative flex aspect-square flex-col justify-between rounded-lg p-1.5 text-left text-white transition",
+                          active && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
+                          selected.length > 0 && !active && "opacity-45 hover:opacity-100",
+                        )}
+                        style={{ backgroundColor: topic.color || "var(--primary)" }}
+                      >
+                        <span className="text-xl leading-none font-bold">{topic.sort}</span>
+                        {active && <CheckIcon className="absolute top-1.5 right-1.5 size-4" />}
+                        <span className="text-[0.625rem] leading-tight font-semibold uppercase">{topic.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selected.map((topic) => (
+                  <p key={topic.id} className="text-sm">
+                    <span className="font-medium">{sgdLabel(topic)}.</span>{" "}
+                    <span className="text-muted-foreground">{topic.description}</span>
+                  </p>
                 ))}
-              </SelectContent>
-            </Select>
-            <p className="text-sm whitespace-pre-line text-muted-foreground">
-              {topics.find((topic) => topic.id === team.topicId)?.description ||
-                "Pick a topic as a starting point, or go with your own idea. You can change it any time."}
-            </p>
-          </div>
-        </Section>
-      )}
+              </div>
+            </Section>
+          )}
 
-      {team && milestones.length > 0 && (
-        <Section
-          title="Progress checklist"
-          description={`${done.length} of ${milestones.length} complete`}
-          action={
-            <Button size="sm" variant="ghost" disabled={done.length === 0} onClick={() => updateTeam.mutate({ progress: [] })}>
-              Reset
-            </Button>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            <Progress value={(done.length / milestones.length) * 100} />
-            {milestones.map((milestone, index) => (
-              <label key={index} className="flex cursor-pointer items-center gap-3">
-                <Checkbox
-                  checked={done.includes(index)}
-                  onCheckedChange={(checked) =>
-                    updateTeam.mutate({
-                      progress: checked ? [...done, index] : done.filter((entry) => entry !== index),
-                    })
-                  }
-                />
-                <span className={done.includes(index) ? "text-muted-foreground line-through" : undefined}>
-                  {milestone.title}
-                </span>
-                {milestone.minutes > 0 && <Badge variant="secondary">{milestone.minutes} min</Badge>}
-              </label>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {settings.guidelines && (
-        <Collapsible defaultOpen>
-          <Section
-            title="Presentation guidelines"
-            action={
-              <CollapsibleTrigger asChild>
-                <Button size="icon-sm" variant="ghost" aria-label="Toggle guidelines">
-                  <ChevronDownIcon />
+          {team && milestones.length > 0 && (
+            <Section
+              title="Progress checklist"
+              description={`${done.length} of ${milestones.length} complete`}
+              action={
+                <Button size="sm" variant="ghost" disabled={done.length === 0} onClick={() => updateTeam.mutate({ progress: [] })}>
+                  Reset
                 </Button>
-              </CollapsibleTrigger>
-            }
-          >
-            <CollapsibleContent>
-              <p className="text-sm leading-relaxed whitespace-pre-line">{settings.guidelines}</p>
-            </CollapsibleContent>
-          </Section>
-        </Collapsible>
-      )}
+              }
+            >
+              <div className="flex flex-col gap-3">
+                <Progress value={(done.length / milestones.length) * 100} />
+                {milestones.map((milestone, index) => (
+                  <label key={index} className="flex cursor-pointer items-center gap-3">
+                    <Checkbox
+                      checked={done.includes(index)}
+                      onCheckedChange={(checked) =>
+                        updateTeam.mutate({
+                          progress: checked ? [...done, index] : done.filter((entry) => entry !== index),
+                        })
+                      }
+                    />
+                    <span className={done.includes(index) ? "text-muted-foreground line-through" : undefined}>
+                      {milestone.title}
+                    </span>
+                    {milestone.minutes > 0 && <Badge variant="secondary">{milestone.minutes} min</Badge>}
+                  </label>
+                ))}
+              </div>
+            </Section>
+          )}
 
-      {content.data && content.data.materials.length > 0 && (
-        <Section
-          title="Resources from the organizers"
-          description="Templates and links provided for this event. Copy a template into your AI tool of choice and adapt it."
-        >
-          <div className="flex flex-col gap-3">
-            {content.data.materials.map((material) => (
-              <MaterialCard key={material.id} material={material} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {content.data && content.data.prompts.length > 0 && (
-        <Section
-          title="Prompt library"
-          description="Copy-ready prompts for each phase of the build. Optional. Paste them into any AI tool and adapt them."
-        >
-          <div className="flex flex-col gap-3">
-            {content.data.prompts.map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {content.data && content.data.tools.length > 0 && (
-        <Section title="Toolbox" description="Suggestions only. Most have a free tier. Use any tool you like.">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {content.data.tools.map((tool) => (
-              <a
-                key={tool.id}
-                href={tool.url || undefined}
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-col gap-1 rounded-lg border p-4 hover:bg-muted/50"
+          {settings.guidelines && (
+            <Collapsible defaultOpen>
+              <Section
+                title="Presentation guidelines"
+                action={
+                  <CollapsibleTrigger asChild>
+                    <Button size="icon-sm" variant="ghost" aria-label="Toggle guidelines">
+                      <ChevronDownIcon />
+                    </Button>
+                  </CollapsibleTrigger>
+                }
               >
-                <span className="flex items-center gap-2 font-medium">
-                  {tool.name}
-                  {tool.url && <ExternalLinkIcon className="size-3.5 text-muted-foreground" />}
-                </span>
-                <span className="text-sm text-muted-foreground">{tool.description}</span>
-              </a>
-            ))}
-          </div>
-        </Section>
-      )}
+                <CollapsibleContent>
+                  <p className="text-sm leading-relaxed whitespace-pre-line">{settings.guidelines}</p>
+                </CollapsibleContent>
+              </Section>
+            </Collapsible>
+          )}
+        </div>
 
-      <Section title="Pitch timer" description="Rehearse against the clock. It beeps at zero.">
-        <PitchTimer />
-      </Section>
+        <div className="flex flex-col gap-4">
+          {tools.length > 0 && (
+            <Section title="Toolbox" description="Suggestions only. Most have a free tier. Use any tool you like.">
+              <div className="flex flex-col gap-3">
+                {googleTools.length > 0 && (
+                  <div className="overflow-hidden rounded-xl border-2 border-[#4285F4]/40 bg-[#4285F4]/5">
+                    <div className="h-1.5 bg-[linear-gradient(90deg,#4285F4_25%,#EA4335_25%_50%,#FBBC05_50%_75%,#34A853_75%)]" />
+                    <div className="flex flex-col gap-2 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-heading font-semibold">Start here: Google tools</p>
+                        <Badge className="bg-[#4285F4] text-white">Recommended first</Badge>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {googleTools.map((tool) => (
+                          <ToolCard key={tool.id} tool={tool} featured />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {otherTools.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {googleTools.length > 0 && <p className="text-sm font-medium text-muted-foreground">More tools</p>}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {otherTools.map((tool) => (
+                        <ToolCard key={tool.id} tool={tool} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
 
-      {team && (
-        <Section
-          title="Backup uploads"
-          description="Optional. Send your deck and demo video to the tech team in case the internet fails during your pitch."
-        >
-          <TeamUploads teamId={team.id} />
-        </Section>
-      )}
+          {content.data && content.data.materials.length > 0 && (
+            <Section
+              title="Resources from the organizers"
+              description="Templates and links provided for this event. Copy a template into your AI tool of choice and adapt it."
+            >
+              <div className="flex flex-col gap-3">
+                {content.data.materials.map((material) => (
+                  <MaterialCard key={material.id} material={material} />
+                ))}
+              </div>
+            </Section>
+          )}
 
-      <Section title="Program flow">
-        <ScheduleList schedule={state.schedule} />
-      </Section>
+          <Section title="Pitch timer" description="Rehearse against the clock. It beeps at zero.">
+            <PitchTimer />
+          </Section>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:col-span-2 xl:col-span-1">
+          {content.data && content.data.prompts.length > 0 && (
+            <Section
+              title="Prompt library"
+              description="Copy-ready prompts for each phase of the build. Optional. Paste them into any AI tool and adapt them."
+            >
+              <div className="flex flex-col gap-3">
+                {content.data.prompts.map((prompt) => (
+                  <PromptCard key={prompt.id} prompt={prompt} tools={tools} />
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {team && (
+            <Section
+              title="Backup uploads"
+              description="Optional. Send your deck and demo video to the tech team in case the internet fails during your pitch."
+            >
+              <TeamUploads teamId={team.id} />
+            </Section>
+          )}
+
+          <Section title="Program flow">
+            <ScheduleList schedule={state.schedule} />
+          </Section>
+        </div>
+      </div>
     </PageShell>
+  );
+}
+
+function isGoogle(tool: Tool): boolean {
+  return tool.vendor.trim().toLowerCase() === "google";
+}
+
+function ToolDot({ tool, className }: { tool: Tool; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("flex shrink-0 items-center justify-center rounded-md font-bold text-white", className)}
+      style={{ backgroundColor: tool.color || "var(--muted-foreground)" }}
+    >
+      {tool.name.charAt(0)}
+    </span>
+  );
+}
+
+/** Featured cards are larger and tinted, so the eye lands on them before the rest of the toolbox. */
+function ToolCard({ tool, featured = false }: { tool: Tool; featured?: boolean }) {
+  return (
+    <a
+      href={tool.url || undefined}
+      target="_blank"
+      rel="noreferrer"
+      className={cn(
+        "flex gap-2.5 rounded-lg border border-l-4 bg-card hover:bg-muted/50",
+        featured ? "p-3 shadow-sm" : "p-2",
+      )}
+      style={{ borderLeftColor: tool.color || undefined }}
+    >
+      <ToolDot tool={tool} className={featured ? "size-9 text-base" : "size-6 text-xs"} />
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className={cn("flex items-center gap-1.5 font-medium", !featured && "text-sm")}>
+          {tool.name}
+          {tool.url && <ExternalLinkIcon className="size-3.5 text-muted-foreground" />}
+        </span>
+        <span className={cn("text-muted-foreground", featured ? "text-sm" : "text-xs")}>{tool.description}</span>
+      </span>
+    </a>
   );
 }
 
@@ -349,12 +434,21 @@ function MaterialCard({ material }: { material: Material }) {
   );
 }
 
-function PromptCard({ prompt }: { prompt: Prompt }) {
+function PromptCard({ prompt, tools }: { prompt: Prompt; tools: Tool[] }) {
+  // The recommendation is free text such as "Google AI Studio or Antigravity", so take the longest name it mentions.
+  const tool = [...tools]
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((entry) => prompt.tool.toLowerCase().includes(entry.name.toLowerCase()));
   return (
     <div className="flex flex-col gap-2 rounded-lg border p-4">
       <div className="flex items-center gap-2">
         <span className="font-medium">{prompt.title}</span>
-        {prompt.tool && <Badge variant="secondary">{prompt.tool}</Badge>}
+        {prompt.tool && (
+          <Badge variant="secondary" className="gap-1.5">
+            {tool && <ToolDot tool={tool} className="size-3.5 text-[0.5rem]" />}
+            {prompt.tool}
+          </Badge>
+        )}
         <div className="ml-auto">
           <CopyButton text={prompt.body} />
         </div>

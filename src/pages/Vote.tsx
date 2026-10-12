@@ -63,27 +63,29 @@ export default function Vote() {
           }
         >
           <div className="flex flex-col gap-5">
-            {teams.map((team) => (
-              <fieldset key={team.id} className="flex flex-col gap-2">
-                <legend className="mb-2 font-medium">{team.name}</legend>
-                <div className="grid grid-cols-5 gap-2">
-                  {RATINGS.map((value) => (
-                    <Button
-                      key={value}
-                      type="button"
-                      size="lg"
-                      disabled={!open}
-                      variant={ratings[team.id] === value ? "default" : "outline"}
-                      aria-pressed={ratings[team.id] === value}
-                      aria-label={`Rate ${team.name} ${value} out of 5`}
-                      onClick={() => setRatings((current) => ({ ...current, [team.id]: value }))}
-                    >
-                      {value}
-                    </Button>
-                  ))}
-                </div>
-              </fieldset>
-            ))}
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {teams.map((team) => (
+                <fieldset key={team.id} className="flex flex-col gap-2">
+                  <legend className="mb-2 font-medium">{team.name}</legend>
+                  <div className="grid grid-cols-5 gap-2">
+                    {RATINGS.map((value) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="lg"
+                        disabled={!open}
+                        variant={ratings[team.id] === value ? "default" : "outline"}
+                        aria-pressed={ratings[team.id] === value}
+                        aria-label={`Rate ${team.name} ${value} out of 5`}
+                        onClick={() => setRatings((current) => ({ ...current, [team.id]: value }))}
+                      >
+                        {value}
+                      </Button>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
 
             <div className="flex flex-col gap-2 border-t pt-4">
               <div className="flex items-center justify-between text-sm text-muted-foreground">

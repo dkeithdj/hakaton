@@ -46,7 +46,7 @@ plan
 | Path | Who | What |
 | --- | --- | --- |
 | `/` | Anyone | Live status, timer, program flow, team progress, results once published |
-| `/participant` | Each team, with its own team password | Team workspace: timer, topic, checklist, prompt library, toolbox, pitch timer, backup uploads |
+| `/participant` | Each team, with its own team password | Team workspace: timer, SGD picker, checklist, prompt library, toolbox, pitch timer, backup uploads |
 | `/vote` | Anyone with the QR code or link | Rate every team 1 to 5, once, while voting is open |
 | `/admin` | Admin password | Teams, topics, schedule, prompts, tools, timer, voting, uploads, settings |
 

@@ -26,6 +26,9 @@ export interface Topic {
   id: number;
   title: string;
   description: string;
+  /** Hex color of the goal's tile. */
+  color: string;
+  /** Doubles as the goal number shown on its tile. */
   sort: number;
 }
 
@@ -33,7 +36,8 @@ export interface Team {
   id: number;
   name: string;
   members: string[];
-  topicId: number | null;
+  /** The goals the team is building on. Empty until they pick at least one. */
+  topicIds: number[];
   /** Indexes into settings.milestones that the team has ticked off. */
   progress: number[];
   sort: number;
@@ -71,6 +75,10 @@ export interface Tool {
   name: string;
   description: string;
   url: string;
+  /** Who makes it. Tools from Google are listed first for participants. */
+  vendor: string;
+  /** Hex color that identifies the tool wherever it is mentioned. */
+  color: string;
   sort: number;
 }
 

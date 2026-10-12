@@ -66,12 +66,6 @@ function Dashboard({ state }: { state: ClientState }) {
     { key: "name", label: "Team name", type: "text" },
     { key: "members", label: "Members", type: "lines", placeholder: "One member per line" },
     { key: "password", label: "Team password", type: "text", placeholder: "Leave blank to generate one" },
-    {
-      key: "topicId",
-      label: "Topic",
-      type: "option",
-      options: topics.map((topic) => ({ id: topic.id, label: topic.title })),
-    },
     sortField,
   ];
 
@@ -113,12 +107,13 @@ function Dashboard({ state }: { state: ClientState }) {
           <ResourceEditor
             resource="topics"
             title="Topics"
-            description="Starting points that teams can choose from."
+            description="The Sustainable Development Goals teams start from. A team can pick more than one. The order is the number shown on each goal."
             singular="topic"
             items={topics as never}
             fields={[
               { key: "title", label: "Title", type: "text" },
               { key: "description", label: "Description", type: "textarea" },
+              { key: "color", label: "Color", type: "text", placeholder: "#E5243B" },
               sortField,
             ]}
           />
@@ -174,12 +169,15 @@ function Dashboard({ state }: { state: ClientState }) {
           <ResourceEditor
             resource="tools"
             title="Toolbox"
+            description="Tools whose vendor is Google are shown first to participants. The color marks the tool wherever it appears."
             singular="tool"
             items={(admin.data?.tools ?? []) as never}
             fields={[
               { key: "name", label: "Name", type: "text" },
               { key: "description", label: "Description", type: "textarea" },
               { key: "url", label: "Link", type: "text", placeholder: "https://" },
+              { key: "vendor", label: "Vendor", type: "text", placeholder: "Google" },
+              { key: "color", label: "Color", type: "text", placeholder: "#4285F4" },
               sortField,
             ]}
           />

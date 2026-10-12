@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration, type ClientState } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { getPhase, type Phase, type PublicSettings, type ScheduleItem, type Team, type TeamResult } from "../../shared/types";
+import { getPhase, type Phase, type PublicSettings, type ScheduleItem, type Team, type TeamResult, type Topic } from "../../shared/types";
 
 const PHASE_LABELS: Record<Phase, string> = {
   upcoming: "Starting soon",
@@ -15,6 +15,33 @@ const PHASE_LABELS: Record<Phase, string> = {
   voting_closed: "Voting closed",
   results: "Results are in",
 };
+
+// Temporary low-resolution export. Swap the file for the final SUBAY artwork.
+const SUBAY_LOGO = "/assets/subaylogo.png";
+
+/** The event wordmark. It is white, so it needs `bg-subay` or another saturated surface behind it. */
+export function EventLogo({ name, className }: { name: string; className?: string }) {
+  return <img src={SUBAY_LOGO} alt={name} className={cn("drop-shadow-[0_0_24px_rgb(255_255_255/0.45)]", className)} />;
+}
+
+export function sgdLabel(topic: Topic): string {
+  return `SGD ${topic.sort}: ${topic.title}`;
+}
+
+/** A goal's number on its own color, for places too tight to spell the goal out. */
+export function SgdChip({ topic }: { topic: Topic }) {
+  return (
+    <span
+      role="img"
+      aria-label={sgdLabel(topic)}
+      title={sgdLabel(topic)}
+      className="inline-flex size-6 items-center justify-center rounded-md text-xs font-bold text-white"
+      style={{ backgroundColor: topic.color || "var(--primary)" }}
+    >
+      {topic.sort}
+    </span>
+  );
+}
 
 export function PhaseBadge({ phase }: { phase: Phase }) {
   const live = phase === "hacking" || phase === "voting";
@@ -38,10 +65,11 @@ export function PageShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-svh">
+    <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
-          <Link to="/" className="font-heading text-lg font-semibold">
+        <div className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-3 px-4 py-2">
+          <Link to="/" className="flex items-center gap-2 font-heading text-lg font-semibold">
+            <img src="/assets/devcon-icon.svg" alt="" className="size-6" />
             {state.settings.eventName}
           </Link>
           <PhaseBadge phase={getPhase(state.settings, now)} />
@@ -53,7 +81,20 @@ export function PageShell({
           </nav>
         </div>
       </header>
-      <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">{children}</main>
+      <main className="mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-4 p-4">{children}</main>
+      {/* The partner logos are white, so the footer stays dark in both themes. */}
+      <footer className="bg-brand-950">
+        <div className="mx-auto flex max-w-[100rem] flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 py-2 text-xs tracking-widest text-brand-200 uppercase">
+          <span className="flex items-center gap-3">
+            Hosted by
+            <img src="/assets/devcondavao.svg" alt="DEVCON Davao" className="h-14 w-auto" />
+          </span>
+          <span className="flex items-center gap-3">
+            A program of
+            <img src="/assets/sheisdevconlogo.png" alt="She is DEVCON" className="h-7 w-auto" />
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -104,7 +145,7 @@ export function ScheduleList({ schedule }: { schedule: ScheduleItem[] }) {
   return (
     <ol className="flex flex-col">
       {schedule.map((item) => (
-        <li key={item.id} className="flex gap-4 border-b py-3 last:border-0">
+        <li key={item.id} className="flex gap-4 border-b py-2 first:pt-0 last:border-0 last:pb-0">
           <span className="w-24 shrink-0 font-mono text-sm text-muted-foreground">{item.timeLabel}</span>
           <div>
             <p className="font-medium">{item.title}</p>
@@ -146,15 +187,17 @@ export function Section({
   title,
   description,
   action,
+  className,
   children,
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
