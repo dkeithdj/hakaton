@@ -66,12 +66,6 @@ function Dashboard({ state }: { state: ClientState }) {
     { key: "name", label: "Team name", type: "text" },
     { key: "members", label: "Members", type: "lines", placeholder: "One member per line" },
     { key: "password", label: "Team password", type: "text", placeholder: "Leave blank to generate one" },
-    {
-      key: "topicId",
-      label: "Topic",
-      type: "option",
-      options: topics.map((topic) => ({ id: topic.id, label: topic.title })),
-    },
     sortField,
   ];
 
@@ -113,12 +107,13 @@ function Dashboard({ state }: { state: ClientState }) {
           <ResourceEditor
             resource="topics"
             title="Topics"
-            description="Starting points that teams can choose from."
+            description="The Sustainable Development Goals teams start from. A team can pick more than one. The order is the number shown on each goal."
             singular="topic"
             items={topics as never}
             fields={[
               { key: "title", label: "Title", type: "text" },
               { key: "description", label: "Description", type: "textarea" },
+              { key: "color", label: "Color", type: "text", placeholder: "#E5243B" },
               sortField,
             ]}
           />
@@ -174,12 +169,15 @@ function Dashboard({ state }: { state: ClientState }) {
           <ResourceEditor
             resource="tools"
             title="Toolbox"
+            description="Tools whose vendor is Google are shown first to participants. The color marks the tool wherever it appears."
             singular="tool"
             items={(admin.data?.tools ?? []) as never}
             fields={[
               { key: "name", label: "Name", type: "text" },
               { key: "description", label: "Description", type: "textarea" },
               { key: "url", label: "Link", type: "text", placeholder: "https://" },
+              { key: "vendor", label: "Vendor", type: "text", placeholder: "Google" },
+              { key: "color", label: "Color", type: "text", placeholder: "#4285F4" },
               sortField,
             ]}
           />
@@ -357,8 +355,12 @@ function Uploads({ state, uploads }: { state: ClientState; uploads: Upload[] }) 
   );
 }
 
+const FORMATTING_HELP = "Formatting: **bold**, *italic*, `code`, and lines starting with “- ” become bullets.";
+
 function milestonesToText(milestones: Milestone[]): string {
-  return milestones.map((milestone) => `${milestone.title} | ${milestone.minutes}`).join("\n");
+  return milestones
+    .map((milestone) => [milestone.title, milestone.minutes, ...(milestone.hint ? [milestone.hint] : [])].join(" | "))
+    .join("\n");
 }
 
 function textToMilestones(text: string): Milestone[] {
@@ -367,9 +369,8 @@ function textToMilestones(text: string): Milestone[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const divider = line.lastIndexOf("|");
-      if (divider === -1) return { title: line, minutes: 0 };
-      return { title: line.slice(0, divider).trim(), minutes: Number(line.slice(divider + 1)) || 0 };
+      const [title, minutes = "", ...hint] = line.split("|").map((part) => part.trim());
+      return { title, minutes: Number(minutes) || 0, hint: hint.join(" | ") };
     });
 }
 
@@ -453,12 +454,14 @@ function SettingsForm({ settings }: { settings: Settings }) {
         <div className="flex flex-col gap-2">
           <Label htmlFor="settings-guidelines">Presentation guidelines</Label>
           <Textarea rows={6} {...field("guidelines")} />
+          <p className="text-xs text-muted-foreground">{FORMATTING_HELP}</p>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="settings-milestones">Checklist milestones</Label>
           <Textarea rows={6} {...field("milestones")} />
           <p className="text-xs text-muted-foreground">
-            One per line as “Title | minutes”. Reordering or removing lines shifts what teams have already ticked.
+            One per line as “Title | minutes | what to do”. The last part is optional and shown under the title.{" "}
+            {FORMATTING_HELP} Reordering or removing lines shifts what teams have already ticked.
           </p>
         </div>
         <div>

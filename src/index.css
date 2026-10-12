@@ -6,6 +6,22 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --color-brand-50: var(--brand-50);
+    --color-brand-100: var(--brand-100);
+    --color-brand-200: var(--brand-200);
+    --color-brand-300: var(--brand-300);
+    --color-brand-400: var(--brand-400);
+    --color-brand-500: var(--brand-500);
+    --color-brand-600: var(--brand-600);
+    --color-brand-700: var(--brand-700);
+    --color-brand-800: var(--brand-800);
+    --color-brand-900: var(--brand-900);
+    --color-brand-950: var(--brand-950);
+    --color-devcon-yellow: var(--devcon-yellow);
+    --color-devcon-orange: var(--devcon-orange);
+    --color-devcon-green: var(--devcon-green);
+    --color-devcon-purple: var(--devcon-purple);
+    --color-warning: var(--warning);
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -49,72 +65,104 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --brand-50: #FFF2FE;
+    --brand-100: #FFE3FE;
+    --brand-200: #FFC6FC;
+    --brand-300: #FF99F4;
+    --brand-400: #FF5DEC;
+    --brand-500: #FF21E4;
+    --brand-600: #FF0FDD;
+    --brand-700: #CF00AD;
+    --brand-800: #A9008B;
+    --brand-900: #89066F;
+    --brand-950: #5E004B;
+    --devcon-yellow: #E8CA04;
+    --devcon-orange: #EA641D;
+    --devcon-green: #71B406;
+    --devcon-purple: #7808FF;
+}
+
+:root {
+    --background: oklch(0.985 0.01 335);
+    --foreground: oklch(0.2 0.05 335);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.2 0.05 335);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.2 0.05 335);
+    --primary: var(--brand-700);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: var(--brand-100);
+    --secondary-foreground: var(--brand-950);
+    --muted: oklch(0.96 0.02 335);
+    --muted-foreground: oklch(0.48 0.06 335);
+    --accent: var(--brand-100);
+    --accent-foreground: var(--brand-950);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --warning: oklch(0.62 0.14 80);
+    --border: oklch(0.91 0.03 335);
+    --input: oklch(0.91 0.03 335);
+    --ring: var(--brand-500);
+    --glow: color-mix(in oklab, var(--brand-200) 70%, transparent);
+    --chart-1: var(--brand-500);
+    --chart-2: var(--devcon-purple);
+    --chart-3: var(--devcon-yellow);
+    --chart-4: var(--devcon-green);
+    --chart-5: var(--devcon-orange);
+    --radius: 0.875rem;
+    --sidebar: oklch(1 0 0);
+    --sidebar-foreground: oklch(0.2 0.05 335);
+    --sidebar-primary: var(--brand-700);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: var(--brand-100);
+    --sidebar-accent-foreground: var(--brand-950);
+    --sidebar-border: oklch(0.91 0.03 335);
+    --sidebar-ring: var(--brand-500);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: oklch(0.16 0.03 335);
+    --foreground: var(--brand-50);
+    --card: oklch(0.21 0.045 335);
+    --card-foreground: var(--brand-50);
+    --popover: oklch(0.21 0.045 335);
+    --popover-foreground: var(--brand-50);
+    --primary: var(--brand-700);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.27 0.06 335);
+    --secondary-foreground: var(--brand-50);
+    --muted: oklch(0.27 0.06 335);
+    --muted-foreground: color-mix(in oklab, var(--brand-200) 70%, transparent);
+    --accent: oklch(0.27 0.06 335);
+    --accent-foreground: var(--brand-50);
+    --destructive: oklch(0.68 0.21 25);
+    --warning: var(--devcon-yellow);
+    --border: color-mix(in oklab, var(--brand-300) 14%, transparent);
+    --input: color-mix(in oklab, var(--brand-300) 20%, transparent);
+    --ring: var(--brand-500);
+    --glow: color-mix(in oklab, var(--brand-700) 35%, transparent);
+    --chart-1: var(--brand-500);
+    --chart-2: var(--devcon-purple);
+    --chart-3: var(--devcon-yellow);
+    --chart-4: var(--devcon-green);
+    --chart-5: var(--devcon-orange);
+    --sidebar: oklch(0.21 0.045 335);
+    --sidebar-foreground: var(--brand-50);
+    --sidebar-primary: var(--brand-700);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.27 0.06 335);
+    --sidebar-accent-foreground: var(--brand-50);
+    --sidebar-border: color-mix(in oklab, var(--brand-300) 14%, transparent);
+    --sidebar-ring: var(--brand-500);
+}
+
+/* The SUBAY banner: magenta drapes with a red glow behind the logo. */
+@utility bg-subay {
+    background-color: var(--brand-600);
+    background-image:
+        radial-gradient(55% 75% at 50% 45%, rgb(240 20 60 / 0.45), transparent 70%),
+        radial-gradient(70% 120% at 0% 0%, color-mix(in oklab, var(--brand-400) 60%, transparent), transparent 60%),
+        radial-gradient(60% 120% at 100% 100%, color-mix(in oklab, var(--brand-800) 60%, transparent), transparent 60%),
+        linear-gradient(120deg, var(--brand-600), var(--brand-500) 45%, var(--brand-700));
 }
 
 @layer base {
@@ -123,6 +171,8 @@
     }
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(80rem 28rem at 50% -8rem, var(--glow), transparent);
+    background-repeat: no-repeat;
     }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;

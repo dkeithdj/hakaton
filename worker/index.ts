@@ -269,11 +269,12 @@ participant.put("/teams/:id", async (c) => {
   const teamId = idParam(c);
   assertTeamAccess(c, teamId);
   const body = await readJson(c);
-  if (typeof body.topicId === "number") {
-    const topic = await c.env.DB.prepare("SELECT 1 FROM topics WHERE id = ?").bind(body.topicId).first();
-    if (!topic) bad("Unknown topic");
+  if (Array.isArray(body.topicIds) && body.topicIds.length > 0) {
+    const { results } = await c.env.DB.prepare("SELECT id FROM topics").all<{ id: number }>();
+    const known = new Set<unknown>(results.map((row) => row.id));
+    if (!body.topicIds.every((id) => known.has(id))) bad("Unknown topic");
   }
-  const team = await updateResource(c.env.DB, "teams", teamId, body, ["topicId", "progress"]);
+  const team = await updateResource(c.env.DB, "teams", teamId, body, ["topicIds", "progress"]);
   return c.json(toPublicTeam(team as unknown as AdminTeam));
 });
 
@@ -435,10 +436,11 @@ admin.put("/settings", async (c) => {
     const value = body.milestones;
     if (!Array.isArray(value) || value.length > 20) bad("Invalid milestones");
     patch.milestones = value.map((item: unknown) => {
-      const { title, minutes } = (item ?? {}) as Record<string, unknown>;
+      const { title, minutes, hint = "" } = (item ?? {}) as Record<string, unknown>;
       if (typeof title !== "string" || title.trim() === "" || title.length > 200) bad("Invalid milestone title");
       if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes < 0) bad("Invalid milestone minutes");
-      return { title: title.trim(), minutes };
+      if (typeof hint !== "string" || hint.length > 500) bad("Invalid milestone hint");
+      return { title: title.trim(), minutes, hint: hint.trim() };
     });
   }
 

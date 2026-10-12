@@ -1,12 +1,14 @@
 import { QRCodeSVG } from "qrcode.react";
 import { Progress } from "@/components/ui/progress";
 import {
+  EventLogo,
   FullPageMessage,
   HackTimer,
   PageShell,
   ResultsList,
   ScheduleList,
   Section,
+  SgdChip,
   voteUrl,
 } from "@/components/event";
 import { formatDuration, useEventState, useNow, type ClientState } from "@/lib/api";
@@ -32,53 +34,75 @@ export default function Viewer() {
 
   return (
     <PageShell state={state} now={now}>
-      <section className="flex flex-col items-center gap-3 py-8 text-center">
-        <h1 className="font-heading text-4xl font-semibold sm:text-5xl">{settings.eventName}</h1>
-        {settings.tagline && <p className="text-lg text-muted-foreground">{settings.tagline}</p>}
-        <p className="mt-4 text-sm tracking-widest text-muted-foreground uppercase">
-          {phase === "upcoming" ? "Hackathon duration" : "Time remaining"}
-        </p>
-        <HackTimer settings={settings} now={now} className="text-7xl sm:text-8xl" />
+      <section className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 rounded-3xl bg-subay px-6 py-5 text-white sm:justify-between">
+        <div className="flex flex-col items-center gap-1 sm:items-start">
+          <h1>
+            <EventLogo name={settings.eventName} className="w-full max-w-64" />
+          </h1>
+          {settings.tagline && <p className="text-lg text-white/85">{settings.tagline}</p>}
+        </div>
+        <div className="flex flex-col items-center gap-1 sm:items-end">
+          <p className="text-sm tracking-widest text-white/85 uppercase">
+            {phase === "upcoming" ? "Hackathon duration" : "Time remaining"}
+          </p>
+          <HackTimer settings={settings} now={now} className="text-6xl leading-none text-white sm:text-7xl" />
+        </div>
       </section>
 
-      {state.results && (
-        <Section title="Results" description={`${state.ballotCount} votes · average rating out of 5`}>
-          <ResultsList teams={teams} results={state.results} />
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4">
+          {state.results && (
+            <Section title="Results" description={`${state.ballotCount} votes · average rating out of 5`}>
+              <ResultsList teams={teams} results={state.results} />
+            </Section>
+          )}
+
+          <Section title="Program flow">
+            <ScheduleList schedule={schedule} />
+          </Section>
+        </div>
+
+        <Section
+          title="Teams"
+          description="The goals each team is building on and how far along they are."
+          className="lg:col-span-2"
+        >
+          {teams.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Teams have not been announced yet.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {teams.map((team) => {
+                const chosen = topics.filter((topic) => team.topicIds.includes(topic.id));
+                const total = settings.milestones.length;
+                const done = team.progress.filter((index) => index < total).length;
+                return (
+                  <div key={team.id} className="flex flex-col gap-1.5 rounded-lg border p-3">
+                    <p className="font-medium">{team.name}</p>
+                    <p className="text-sm text-muted-foreground">{team.members.join(", ") || "No members listed"}</p>
+                    {chosen.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {chosen.map((topic) => (
+                          <SgdChip key={topic.id} topic={topic} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No SGD chosen yet</p>
+                    )}
+                    {total > 0 && (
+                      <div className="flex items-center gap-3">
+                        <Progress value={(done / total) * 100} />
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                          {done}/{total}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Section>
-      )}
-
-      <Section title="Program flow">
-        <ScheduleList schedule={schedule} />
-      </Section>
-
-      <Section title="Teams" description="What each team is building and how far along they are.">
-        {teams.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Teams have not been announced yet.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {teams.map((team) => {
-              const topic = topics.find((entry) => entry.id === team.topicId);
-              const total = settings.milestones.length;
-              const done = team.progress.filter((index) => index < total).length;
-              return (
-                <div key={team.id} className="flex flex-col gap-2 rounded-lg border p-4">
-                  <p className="font-medium">{team.name}</p>
-                  <p className="text-sm text-muted-foreground">{team.members.join(", ") || "No members listed"}</p>
-                  <p className="text-sm">{topic ? topic.title : <span className="text-muted-foreground">No topic chosen yet</span>}</p>
-                  {total > 0 && (
-                    <div className="mt-1 flex items-center gap-3">
-                      <Progress value={(done / total) * 100} />
-                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                        {done}/{total}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Section>
+      </div>
     </PageShell>
   );
 }
@@ -114,7 +138,7 @@ function VotingScreen({ state, now, open }: { state: ClientState; now: number; o
           </div>
         </div>
 
-        <div className="flex w-full max-w-md flex-col items-center gap-2 rounded-3xl border-2 border-primary bg-primary/10 px-8 py-8">
+        <div className="flex w-full max-w-md flex-col items-center gap-2 rounded-3xl bg-subay px-8 py-8 text-white">
           {/* Re-keyed on every change so the number pops when a vote lands. */}
           <div
             key={ballotCount}

@@ -12,10 +12,10 @@ import type { EventState, PublicSettings, Role } from "../shared/types";
 const baseSettings: PublicSettings = {
   eventName: "Test Hack",
   tagline: "Tagline",
-  guidelines: "Five minutes total.",
+  guidelines: "**Length:** five minutes total.\n- Pitch\n- Demo",
   milestones: [
-    { title: "Define the problem", minutes: 45 },
-    { title: "Build the prototype", minutes: 90 },
+    { title: "Define the problem", minutes: 45, hint: "Agree on **who** has the problem." },
+    { title: "Build the prototype", minutes: 90, hint: "Build **one flow** end to end." },
   ],
   hackDurationMin: 180,
   voteDurationSec: 120,
@@ -30,10 +30,13 @@ function makeState(settings: Partial<PublicSettings> = {}, extra: Partial<EventS
     serverNow: Date.now(),
     settings: { ...baseSettings, ...settings },
     teams: [
-      { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicId: 1, progress: [0], sort: 1 },
-      { id: 2, name: "Team Bravo", members: ["Cy"], topicId: null, progress: [], sort: 2 },
+      { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2], progress: [0], sort: 1 },
+      { id: 2, name: "Team Bravo", members: ["Cy"], topicIds: [], progress: [], sort: 2 },
     ],
-    topics: [{ id: 1, title: "AI for education", description: "Help teachers.", sort: 1 }],
+    topics: [
+      { id: 1, title: "No Poverty", description: "End poverty.", color: "#E5243B", sort: 1 },
+      { id: 2, title: "Quality Education", description: "Help teachers.", color: "#C5192D", sort: 4 },
+    ],
     schedule: [{ id: 1, timeLabel: "1:00 PM", title: "Kickoff", description: "", sort: 1 }],
     ballotCount: 7,
     results: null,
@@ -55,7 +58,10 @@ function mockApi(state: EventState, role: Role | null, hasVoted = false) {
         { id: 1, title: "Pitch deck template", description: "Paste into your AI.", url: "https://example.com/deck", body: "Slide 1 - Title", sort: 1 },
       ],
       prompts: [{ id: 1, title: "Define the problem", tool: "Claude", body: "Ask us five questions.", sort: 1 }],
-      tools: [{ id: 1, name: "Claude", description: "Thinking partner.", url: "https://claude.ai", sort: 1 }],
+      tools: [
+        { id: 1, name: "Claude", description: "Thinking partner.", url: "https://claude.ai", vendor: "Anthropic", color: "#D97757", sort: 2 },
+        { id: 2, name: "Gemini", description: "Free with a Google account.", url: "https://gemini.google.com", vendor: "Google", color: "#4285F4", sort: 1 },
+      ],
     },
     "/api/participant/uploads": [],
     "/api/admin/data": {
@@ -110,6 +116,10 @@ it("viewer shows the timer, schedule, and team progress", async () => {
   expect(screen.getByText("Kickoff")).toBeTruthy();
   expect(screen.getByText("Team Alpha")).toBeTruthy();
   expect(screen.getByText("1/2")).toBeTruthy();
+  expect(screen.getByRole("img", { name: "SGD 4: Quality Education" })).toBeTruthy();
+  expect(screen.getByText("No SGD chosen yet")).toBeTruthy();
+  expect(screen.getByRole("img", { name: "DEVCON Davao" })).toBeTruthy();
+  expect(screen.getByRole("img", { name: "She is DEVCON" })).toBeTruthy();
 });
 
 it("viewer turns into a big-screen voting display with QR, countdown, and count", async () => {
@@ -197,19 +207,35 @@ it("participant page opens only the signed-in team's workspace", async () => {
   expect(screen.queryByText("Team Bravo")).toBeNull();
   expect(screen.getByRole("note").textContent).toContain("a guide, not a rule");
   expect(screen.getByText("1 of 2 complete")).toBeTruthy();
+  // Hints guide the open steps only, and organizer text renders its emphasis.
+  expect(screen.queryByText(/has the problem/)).toBeNull();
+  expect(screen.getByText("one flow").tagName).toBe("STRONG");
+  expect(screen.getByText("Length:").tagName).toBe("STRONG");
+  expect(screen.getByText("Demo").tagName).toBe("LI");
   expect(await screen.findByText("Prompt library")).toBeTruthy();
   expect(screen.getByText("Resources from the organizers")).toBeTruthy();
   expect(screen.getByText("Slide 1 - Title")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Copy template" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Open link" }).getAttribute("href")).toBe("https://example.com/deck");
   expect(screen.getByText("Toolbox")).toBeTruthy();
+  const google = screen.getByText("Start here: Google tools").closest("div.overflow-hidden")!;
+  expect(google.textContent).toContain("Gemini");
+  expect(google.textContent).not.toContain("Thinking partner.");
+  expect(screen.getByText("More tools")).toBeTruthy();
   expect(screen.getByText("Pitch timer")).toBeTruthy();
   expect(screen.getByText("Backup uploads")).toBeTruthy();
 
-  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicId: 1, progress: [0, 1], sort: 1 };
+  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2], progress: [0, 1], sort: 1 };
   await user.click(screen.getByRole("checkbox", { name: /Build the prototype/ }));
   expect(await screen.findByText("2 of 2 complete")).toBeTruthy();
   expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ progress: [0, 1] });
+
+  // A team can build on more than one goal.
+  expect(screen.getByRole("button", { name: "SGD 4: Quality Education" }).getAttribute("aria-pressed")).toBe("true");
+  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2, 1], progress: [0, 1], sort: 1 };
+  await user.click(screen.getByRole("button", { name: "SGD 1: No Poverty" }));
+  expect(await screen.findByText("2 of 2 goals chosen")).toBeTruthy();
+  expect(calls.filter((call) => call.method === "PUT").at(-1)?.body).toEqual({ topicIds: [2, 1] });
 });
 
 it("admin can open any team's workspace from the participant page", async () => {
@@ -236,7 +262,7 @@ it("admin page shows controls and every tab renders", async () => {
   await user.keyboard("{Escape}");
 
   for (const [tab, text] of [
-    ["Topics", "AI for education"],
+    ["Topics", "Quality Education"],
     ["Schedule", "Kickoff"],
     ["Resources & prompts", "Pitch deck template"],
     ["Uploads", "deck.pdf"],

@@ -154,10 +154,18 @@ describe("auth", () => {
     expect((await admin.get("/api/admin/data")).body.teams[0].password).toBe("pass-A");
   });
 
-  it("limits a team to changing its topic and progress", async () => {
+  it("limits a team to changing its topics and progress", async () => {
     const admin = await adminClient();
     const [teamId] = await createTeams(admin, ["A"]);
     const client = await teamClient(teamId, "A");
+    const topics: number[] = [];
+    for (const title of ["No Poverty", "Quality Education"]) {
+      topics.push((await admin.post("/api/admin/resources/topics", { title, color: "#E5243B" })).body.id);
+    }
+    const chosen = await client.put(`/api/participant/teams/${teamId}`, { topicIds: [topics[1], topics[0]] });
+    expect(chosen.body.topicIds).toEqual([...topics].sort((a, b) => a - b));
+    expect((await client.put(`/api/participant/teams/${teamId}`, { topicIds: [topics[0], 999_999] })).status).toBe(400);
+    expect((await client.put(`/api/participant/teams/${teamId}`, { topicIds: [] })).body.topicIds).toEqual([]);
     const updated = await client.put(`/api/participant/teams/${teamId}`, {
       name: "Renamed",
       password: "hijacked",
@@ -284,5 +292,20 @@ describe("voting", () => {
     expect((await new Client().get("/api/state")).body.ballotCount).toBe(0);
     await admin.post("/api/admin/voting/open");
     expect((await voter.post("/api/vote", ratingsFor(ids, 4))).status).toBe(200);
+  });
+});
+
+describe("settings", () => {
+  it("stores an optional hint with each milestone", async () => {
+    const admin = await adminClient();
+    const saved = await admin.put("/api/admin/settings", {
+      milestones: [{ title: "Build", minutes: 90, hint: " Build **one flow**. " }, { title: "Pitch", minutes: 15 }],
+    });
+    expect(saved.body.milestones).toEqual([
+      { title: "Build", minutes: 90, hint: "Build **one flow**." },
+      { title: "Pitch", minutes: 15, hint: "" },
+    ]);
+    expect((await new Client().get("/api/state")).body.settings.milestones[0].hint).toBe("Build **one flow**.");
+    expect((await admin.put("/api/admin/settings", { milestones: [{ title: "Build", minutes: 1, hint: 5 }] })).status).toBe(400);
   });
 });
