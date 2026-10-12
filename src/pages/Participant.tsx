@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { FullPageMessage, HackTimer, PageShell, ScheduleList, Section, sgdLabel, VoteQr } from "@/components/event";
 import { LoginCard } from "@/components/LoginCard";
 import { PitchTimer } from "@/components/PitchTimer";
+import { RichText } from "@/components/RichText";
 import { TeamUploads } from "@/components/TeamUploads";
 import { api, errorMessage, useEventState, useMe, useNow, type ClientState } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -217,8 +218,9 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
               <div className="flex flex-col gap-3">
                 <Progress value={(done.length / milestones.length) * 100} />
                 {milestones.map((milestone, index) => (
-                  <label key={index} className="flex cursor-pointer items-center gap-3">
+                  <label key={index} className="flex cursor-pointer items-start gap-3">
                     <Checkbox
+                      className="mt-0.5"
                       checked={done.includes(index)}
                       onCheckedChange={(checked) =>
                         updateTeam.mutate({
@@ -226,10 +228,17 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
                         })
                       }
                     />
-                    <span className={done.includes(index) ? "text-muted-foreground line-through" : undefined}>
-                      {milestone.title}
+                    <span className="flex flex-col gap-0.5">
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className={done.includes(index) ? "text-muted-foreground line-through" : "font-medium"}>
+                          {milestone.title}
+                        </span>
+                        {milestone.minutes > 0 && <Badge variant="secondary">{milestone.minutes} min</Badge>}
+                      </span>
+                      {milestone.hint && !done.includes(index) && (
+                        <RichText text={milestone.hint} className="text-sm text-muted-foreground" />
+                      )}
                     </span>
-                    {milestone.minutes > 0 && <Badge variant="secondary">{milestone.minutes} min</Badge>}
                   </label>
                 ))}
               </div>
@@ -249,7 +258,7 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
                 }
               >
                 <CollapsibleContent>
-                  <p className="text-sm leading-relaxed whitespace-pre-line">{settings.guidelines}</p>
+                  <RichText text={settings.guidelines} className="text-sm leading-relaxed" />
                 </CollapsibleContent>
               </Section>
             </Collapsible>
@@ -424,7 +433,7 @@ function MaterialCard({ material }: { material: Material }) {
           )}
         </div>
       </div>
-      {material.description && <p className="text-sm whitespace-pre-line text-muted-foreground">{material.description}</p>}
+      {material.description && <RichText text={material.description} className="text-sm text-muted-foreground" />}
       {material.body && (
         <pre className="max-h-56 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">
           {material.body}

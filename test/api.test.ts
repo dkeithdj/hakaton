@@ -294,3 +294,18 @@ describe("voting", () => {
     expect((await voter.post("/api/vote", ratingsFor(ids, 4))).status).toBe(200);
   });
 });
+
+describe("settings", () => {
+  it("stores an optional hint with each milestone", async () => {
+    const admin = await adminClient();
+    const saved = await admin.put("/api/admin/settings", {
+      milestones: [{ title: "Build", minutes: 90, hint: " Build **one flow**. " }, { title: "Pitch", minutes: 15 }],
+    });
+    expect(saved.body.milestones).toEqual([
+      { title: "Build", minutes: 90, hint: "Build **one flow**." },
+      { title: "Pitch", minutes: 15, hint: "" },
+    ]);
+    expect((await new Client().get("/api/state")).body.settings.milestones[0].hint).toBe("Build **one flow**.");
+    expect((await admin.put("/api/admin/settings", { milestones: [{ title: "Build", minutes: 1, hint: 5 }] })).status).toBe(400);
+  });
+});

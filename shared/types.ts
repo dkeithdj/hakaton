@@ -1,6 +1,8 @@
 export interface Milestone {
   title: string;
   minutes: number;
+  /** What to do in this step, shown under the title. Missing on milestones saved before hints existed. */
+  hint?: string;
 }
 
 /** Settings safe to send to anyone. */

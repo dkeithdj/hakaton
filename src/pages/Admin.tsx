@@ -355,8 +355,12 @@ function Uploads({ state, uploads }: { state: ClientState; uploads: Upload[] }) 
   );
 }
 
+const FORMATTING_HELP = "Formatting: **bold**, *italic*, `code`, and lines starting with “- ” become bullets.";
+
 function milestonesToText(milestones: Milestone[]): string {
-  return milestones.map((milestone) => `${milestone.title} | ${milestone.minutes}`).join("\n");
+  return milestones
+    .map((milestone) => [milestone.title, milestone.minutes, ...(milestone.hint ? [milestone.hint] : [])].join(" | "))
+    .join("\n");
 }
 
 function textToMilestones(text: string): Milestone[] {
@@ -365,9 +369,8 @@ function textToMilestones(text: string): Milestone[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const divider = line.lastIndexOf("|");
-      if (divider === -1) return { title: line, minutes: 0 };
-      return { title: line.slice(0, divider).trim(), minutes: Number(line.slice(divider + 1)) || 0 };
+      const [title, minutes = "", ...hint] = line.split("|").map((part) => part.trim());
+      return { title, minutes: Number(minutes) || 0, hint: hint.join(" | ") };
     });
 }
 
@@ -451,12 +454,14 @@ function SettingsForm({ settings }: { settings: Settings }) {
         <div className="flex flex-col gap-2">
           <Label htmlFor="settings-guidelines">Presentation guidelines</Label>
           <Textarea rows={6} {...field("guidelines")} />
+          <p className="text-xs text-muted-foreground">{FORMATTING_HELP}</p>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="settings-milestones">Checklist milestones</Label>
           <Textarea rows={6} {...field("milestones")} />
           <p className="text-xs text-muted-foreground">
-            One per line as “Title | minutes”. Reordering or removing lines shifts what teams have already ticked.
+            One per line as “Title | minutes | what to do”. The last part is optional and shown under the title.{" "}
+            {FORMATTING_HELP} Reordering or removing lines shifts what teams have already ticked.
           </p>
         </div>
         <div>

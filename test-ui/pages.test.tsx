@@ -12,10 +12,10 @@ import type { EventState, PublicSettings, Role } from "../shared/types";
 const baseSettings: PublicSettings = {
   eventName: "Test Hack",
   tagline: "Tagline",
-  guidelines: "Five minutes total.",
+  guidelines: "**Length:** five minutes total.\n- Pitch\n- Demo",
   milestones: [
-    { title: "Define the problem", minutes: 45 },
-    { title: "Build the prototype", minutes: 90 },
+    { title: "Define the problem", minutes: 45, hint: "Agree on **who** has the problem." },
+    { title: "Build the prototype", minutes: 90, hint: "Build **one flow** end to end." },
   ],
   hackDurationMin: 180,
   voteDurationSec: 120,
@@ -207,6 +207,11 @@ it("participant page opens only the signed-in team's workspace", async () => {
   expect(screen.queryByText("Team Bravo")).toBeNull();
   expect(screen.getByRole("note").textContent).toContain("a guide, not a rule");
   expect(screen.getByText("1 of 2 complete")).toBeTruthy();
+  // Hints guide the open steps only, and organizer text renders its emphasis.
+  expect(screen.queryByText(/has the problem/)).toBeNull();
+  expect(screen.getByText("one flow").tagName).toBe("STRONG");
+  expect(screen.getByText("Length:").tagName).toBe("STRONG");
+  expect(screen.getByText("Demo").tagName).toBe("LI");
   expect(await screen.findByText("Prompt library")).toBeTruthy();
   expect(screen.getByText("Resources from the organizers")).toBeTruthy();
   expect(screen.getByText("Slide 1 - Title")).toBeTruthy();

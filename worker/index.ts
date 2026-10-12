@@ -436,10 +436,11 @@ admin.put("/settings", async (c) => {
     const value = body.milestones;
     if (!Array.isArray(value) || value.length > 20) bad("Invalid milestones");
     patch.milestones = value.map((item: unknown) => {
-      const { title, minutes } = (item ?? {}) as Record<string, unknown>;
+      const { title, minutes, hint = "" } = (item ?? {}) as Record<string, unknown>;
       if (typeof title !== "string" || title.trim() === "" || title.length > 200) bad("Invalid milestone title");
       if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes < 0) bad("Invalid milestone minutes");
-      return { title: title.trim(), minutes };
+      if (typeof hint !== "string" || hint.length > 500) bad("Invalid milestone hint");
+      return { title: title.trim(), minutes, hint: hint.trim() };
     });
   }
 

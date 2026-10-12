@@ -1,5 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
 import { Link } from "react-router-dom";
+import { RichText } from "@/components/RichText";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration, type ClientState } from "@/lib/api";
@@ -149,7 +150,7 @@ export function ScheduleList({ schedule }: { schedule: ScheduleItem[] }) {
           <span className="w-24 shrink-0 font-mono text-sm text-muted-foreground">{item.timeLabel}</span>
           <div>
             <p className="font-medium">{item.title}</p>
-            {item.description && <p className="text-sm whitespace-pre-line text-muted-foreground">{item.description}</p>}
+            {item.description && <RichText text={item.description} className="text-sm text-muted-foreground" />}
           </div>
         </li>
       ))}
