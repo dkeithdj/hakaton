@@ -177,6 +177,41 @@ describe("auth", () => {
   });
 });
 
+describe("participant data", () => {
+  it("erases member names, team work, and uploads, leaving team names and scores", async () => {
+    const admin = await adminClient();
+    const created = await admin.post("/api/admin/resources/teams", { name: "A", members: ["Ann", "Bo"], password: "pass-A" });
+    const teamId: number = created.body.id;
+    const topic = await admin.post("/api/admin/resources/topics", { title: "No Poverty" });
+    const team = await teamClient(teamId, "A");
+    await team.put(`/api/participant/teams/${teamId}`, { topicIds: [topic.body.id], progress: [0, 1] });
+
+    const key = `teams/${teamId}/deck/backup.pdf`;
+    await env.UPLOADS.put(key, "deck");
+    await env.DB.prepare(
+      "INSERT INTO uploads (team_id, kind, filename, size, r2_key, r2_upload_id, status, created_at) " +
+        "VALUES (?, 'deck', 'backup.pdf', 4, ?, '', 'done', 0)",
+    )
+      .bind(teamId, key)
+      .run();
+
+    await admin.post("/api/admin/voting/open");
+    await new Client().post("/api/vote", ratingsFor([teamId], 4));
+
+    expect((await team.request("DELETE", "/api/admin/participant-data")).status).toBe(401);
+    expect((await admin.get("/api/admin/data")).body.uploads).toHaveLength(1);
+
+    expect((await admin.request("DELETE", "/api/admin/participant-data")).status).toBe(200);
+    const state = (await new Client().get("/api/state")).body;
+    expect(state.teams).toEqual([{ id: teamId, name: "A", members: [], topicIds: [], progress: [], sort: 0 }]);
+    const data = (await admin.get("/api/admin/data")).body;
+    expect(data.uploads).toEqual([]);
+    expect(data.results).toEqual([{ teamId, average: 4, count: 1 }]);
+    expect(await env.UPLOADS.get(key)).toBeNull();
+    expect((await env.UPLOADS.list({ prefix: "teams/" })).objects).toEqual([]);
+  });
+});
+
 describe("organizer resources", () => {
   it("lets the admin publish links and templates that signed-in teams can read", async () => {
     const admin = await adminClient();

@@ -546,6 +546,25 @@ admin.delete("/uploads/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+// Run once the event is over: erases member names and everything teams made, leaving team names and scores.
+admin.delete("/participant-data", async (c) => {
+  const db = c.env.DB;
+  const pending = await db.prepare("SELECT * FROM uploads WHERE status = 'pending'").all<UploadRow>();
+  await deleteUploadObjects(c.env, pending.results);
+  // Sweep the whole prefix instead of trusting the table, so no file outlives its row.
+  let listed: R2Objects;
+  do {
+    listed = await c.env.UPLOADS.list({ prefix: "teams/" });
+    if (listed.objects.length > 0) await c.env.UPLOADS.delete(listed.objects.map((object) => object.key));
+  } while (listed.truncated);
+  // Storage goes first: if it fails, the rows are still there for a retry.
+  await db.batch([
+    db.prepare("DELETE FROM uploads"),
+    db.prepare("UPDATE teams SET members = '[]', topic_ids = '[]', progress = '[]'"),
+  ]);
+  return c.json({ ok: true });
+});
+
 function resourceParam(c: AppContext) {
   const name = c.req.param("resource") ?? "";
   if (!isResourceName(name)) bad("Unknown resource", 404);

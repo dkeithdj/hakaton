@@ -48,7 +48,8 @@ plan
 | `/` | Anyone | Live status, timer, program flow, team progress, results once published |
 | `/participant` | Each team, with its own team password | Team workspace: timer, SGD picker, checklist, prompt library, toolbox, pitch timer, backup uploads |
 | `/vote` | Anyone with the QR code or link | Rate every team 1 to 5, once, while voting is open |
-| `/admin` | Admin password | Teams, topics, schedule, prompts, tools, timer, voting, uploads, settings |
+| `/admin` | Admin password | Teams, topics, schedule, prompts, tools, timer, voting, uploads, settings, deleting participant data |
+| `/privacy` | Anyone | Privacy policy, linked from every page footer and the sign-in cards |
 
 ## Local development
 
@@ -91,3 +92,10 @@ It **replaces every resource and prompt**, including anything edited in Admin â†
 - Each voter rates every team from 1 to 5 and submits once. The server rejects ballots outside the window.
 - One ballot per browser, enforced with a signed cookie. A private window counts as a new voter, so this relies on voting happening in the room.
 - While voting is open, everyone sees only the number of votes registered. Scores are visible to the admin, and to everyone after the admin publishes results.
+
+## Privacy and data deletion
+
+- The database holds team names, member names, each team's chosen goals and checklist progress, and anonymous ballots. Uploaded decks and videos live in R2.
+- The policy at `/privacy` tells participants this data is used only for the hackathon and deleted when it ends. Keep it true: after the event, open the Control tab and press **Delete participant data**.
+- That button erases member names, chosen goals, checklist progress, and every uploaded file for all teams. Team names and vote scores stay. Download any files you still need first.
+- D1 keeps point-in-time backups for up to 30 days, so deleted rows remain restorable by the Cloudflare account owner until those expire.

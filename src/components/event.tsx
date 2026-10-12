@@ -107,12 +107,17 @@ export function PageShell({
           <div className="mx-auto flex max-w-[100rem] flex-wrap items-center justify-center gap-x-10 gap-y-2 px-4 py-2 text-xs tracking-widest text-brand-200 uppercase">
             <span className="flex items-center gap-3">
               Hosted by
-              <img src="/assets/devcondavao.svg" alt="DEVCON Davao" className="h-14 w-auto" />
+              <a href="https://devcon.ph" target="_blank" rel="noreferrer">
+                <img src="/assets/devcondavao.svg" alt="DEVCON Davao" className="h-14 w-auto" />
+              </a>
             </span>
             <span className="flex items-center gap-3">
               A program of
               <img src="/assets/sheisdevconlogo.png" alt="She is DEVCON" className="h-7 w-auto" />
             </span>
+            <Link to="/privacy" className="underline-offset-4 hover:underline">
+              Privacy policy
+            </Link>
           </div>
         </footer>
       </div>

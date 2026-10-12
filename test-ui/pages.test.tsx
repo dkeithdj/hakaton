@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import Admin from "@/pages/Admin";
 import Participant from "@/pages/Participant";
+import Privacy from "@/pages/Privacy";
 import Viewer from "@/pages/Viewer";
 import Vote from "@/pages/Vote";
 import type { EventState, PublicSettings, Role } from "../shared/types";
@@ -118,7 +119,7 @@ it("viewer shows the timer, schedule, and team progress", async () => {
   expect(screen.getByText("1/2")).toBeTruthy();
   expect(screen.getByRole("img", { name: "SGD 4: Quality Education" })).toBeTruthy();
   expect(screen.getByText("No SGD chosen yet")).toBeTruthy();
-  expect(screen.getByRole("img", { name: "DEVCON Davao" })).toBeTruthy();
+  expect(screen.getByRole("img", { name: "DEVCON Davao" }).closest("a")?.getAttribute("href")).toBe("https://devcon.ph");
   expect(screen.getByRole("img", { name: "She is DEVCON" })).toBeTruthy();
 });
 
@@ -250,6 +251,30 @@ it("admin can open any team's workspace from the participant page", async () => 
   renderPage(<Participant />);
   await user.click(await screen.findByRole("button", { name: /Team Bravo/ }));
   expect(await screen.findByRole("button", { name: "Team Bravo · Switch" })).toBeTruthy();
+});
+
+it("privacy page states the purpose, the safeguards, and the deletion after the event", async () => {
+  mockApi(makeState(), null);
+  renderPage(<Privacy />);
+  expect(await screen.findByRole("heading", { name: "Privacy policy" })).toBeTruthy();
+  expect(screen.getByText(/sole purpose of running this hackathon/)).toBeTruthy();
+  expect(screen.getByText("How it is kept secure")).toBeTruthy();
+  expect(screen.getByText(/organizers delete all member names/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Privacy policy" }).getAttribute("href")).toBe("/privacy");
+  expect(screen.getByRole("link", { name: "davao@devcon.ph" }).getAttribute("href")).toBe("mailto:davao@devcon.ph");
+});
+
+it("admin deletes participant data only after confirming", async () => {
+  const user = userEvent.setup();
+  mockApi(makeState(), "admin");
+  routes["/api/admin/participant-data"] = { ok: true };
+  renderPage(<Admin />);
+  await user.click(await screen.findByRole("button", { name: "Delete participant data" }));
+  expect(calls.some((call) => call.method === "DELETE")).toBe(false);
+  await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Delete participant data" }));
+  await waitFor(() =>
+    expect(calls.some((call) => call.method === "DELETE" && call.path === "/api/admin/participant-data")).toBe(true),
+  );
 });
 
 it("admin page shows controls and every tab renders", async () => {
