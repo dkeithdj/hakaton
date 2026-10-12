@@ -206,6 +206,16 @@ function Control({ state, now, results }: { state: ClientState; now: number; res
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const purge = useMutation({
+    mutationFn: () => api("/api/admin/participant-data", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["state"] });
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+      toast.success("Participant data deleted");
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   const running = settings.hackEndsAt !== null && settings.hackEndsAt > now;
   const paused = settings.hackPausedRemainingMs !== null;
   const votingOpen = settings.voteEndsAt !== null && now < settings.voteEndsAt;
@@ -292,6 +302,22 @@ function Control({ state, now, results }: { state: ClientState; now: number; res
         ) : (
           <ResultsList teams={state.teams} results={results} />
         )}
+      </Section>
+
+      <Section
+        title="Participant data"
+        description="Once the event is over, erase member names, each team's goals and checklist, and every uploaded file. Team names and scores stay."
+      >
+        <ConfirmButton
+          title="Delete all participant data?"
+          description="Member names, chosen goals, checklist progress, and all uploaded decks and videos are erased for every team. Download any files you still need first. This cannot be undone."
+          confirmLabel="Delete participant data"
+          onConfirm={() => purge.mutate()}
+        >
+          <Button variant="destructive" disabled={purge.isPending}>
+            Delete participant data
+          </Button>
+        </ConfirmButton>
       </Section>
     </>
   );

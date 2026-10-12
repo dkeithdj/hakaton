@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,9 @@ export function LoginCard({
             <Button type="submit" disabled={login.isPending || password === "" || (teams !== undefined && teamId === "")}>
               Enter
             </Button>
+            <Link to="/privacy" className="text-center text-xs text-muted-foreground underline-offset-4 hover:underline">
+              Privacy policy
+            </Link>
           </form>
         </CardContent>
       </Card>
