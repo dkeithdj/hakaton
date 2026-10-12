@@ -1,41 +1,38 @@
 # Hakaton
 
-A quick platform on hosting a hackathon.
+A lightweight platform for hosting a hackathon that also serves as the event page.
 
-this is also an event page
-
-this will be a hackathon platform where participants can show what to do and the progress. a timer. and a live voting mechanism after the time ends or when it is triggered.
+Participants can see what to do and track their progress, everyone can follow a live timer, and the audience can vote live once time runs out or when the admin opens voting.
 
 ## Admin page
-there will be n number of teams
-the admin page can create teams with the team members and team names
-it can create topics that the teams can choose as a starting point
-it can setup a timer for the duration of the hackathon (default 3 hours)
-it can have a voting mechanism that anyone that enters the qr code/link can vote, it is also time gated (default 2 minutes)
-once voting is done. voters cannot click the button
-these votes are to choose the team who has the best pitch and demo presentation after the hackathon ends
+
+- Create any number of teams, each with a team name and members.
+- Create topics that teams can choose as a starting point.
+- Set the hackathon timer (default: 3 hours).
+- Run a voting round that anyone with the QR code or link can join.
+  - Voting is time-gated (default: 2 minutes); once it closes, voters can no longer submit.
+  - Votes pick the team with the best pitch and demo presentation after the hackathon ends.
 
 ## Participant page
-the participants can see like this https://nexus-fornonprofits-devconleaders.vercel.app
-this should have similar features
-the participants can opt to upload their pitch decks and demo videos so the tech team can receive it and use as backup for whenever there are internet issues
+
+- A team workspace showing the challenge, resources, and the team's progress.
+- Teams can optionally upload their pitch decks and demo videos so the tech team has a backup in case of internet issues.
 
 ## Voting page
-https://v0-interactive-polling-app.vercel.app/poll/ac45aac3-3783-423f-bcbd-b75890ce8549 similar to this
-during the voting/polling period it should not show the scores of each team. just the number of votes registered
 
-## Viewer's page
-it shows the current status of the hackathon, the schedules, program flow of the event
+- A simple live poll listing the teams.
+- While voting is open, it shows only the number of votes registered, never each team's score.
+
+## Viewer page
+
+- Shows the current status of the hackathon, the schedule, and the program flow of the event.
 
 ## Tech
-the admin page can have a simple user password
-the participants page too should have a simple user password which can be edited in the admin page and be provided to the participants
-this will be deployed in cloudflare so use persistent storage and workers/pages to make this happen
 
-use react, shadcn
-hono for the workers
-
-plan
+- The admin page is protected by a simple password.
+- The participant page is also protected by a simple password, which the admin can edit and hand out to participants.
+- Deployed on Cloudflare, using Workers/Pages with persistent storage.
+- Stack: React and shadcn for the UI, Hono for the Worker.
 
 ---
 
