@@ -74,6 +74,17 @@ npx wrangler secret put SESSION_SECRET      # any long random string
 npm run deploy
 ```
 
+### Seeding the event content
+
+`seeds/production.sql` holds the organizer resources and the prompt library for the event. It is not a migration, so deploys never touch it. Run it on purpose:
+
+```sh
+npm run db:seed:local     # try it on the local database first
+npm run db:seed:remote    # production
+```
+
+It **replaces every resource and prompt**, including anything edited in Admin → Resources & prompts. Teams, topics, tools, schedule, settings, and votes are left alone.
+
 ## How voting works
 
 - The admin opens voting from the Control tab. It closes by itself after the voting window (default 2 minutes) or when the admin closes it.

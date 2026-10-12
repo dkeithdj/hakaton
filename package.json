@@ -15,6 +15,8 @@
     "test": "vitest run && vitest run --config vitest.ui.config.ts",
     "db:migrate:local": "wrangler d1 migrations apply hakaton --local",
     "db:migrate:remote": "wrangler d1 migrations apply hakaton --remote",
+    "db:seed:local": "wrangler d1 execute hakaton --local --file seeds/production.sql",
+    "db:seed:remote": "wrangler d1 execute hakaton --remote --file seeds/production.sql",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
