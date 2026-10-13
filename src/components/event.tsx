@@ -30,12 +30,11 @@ const PHASE_LABELS: Record<Phase, string> = {
   results: "Results are in",
 };
 
-// Temporary low-resolution export. Swap the file for the final SUBAY artwork.
-const SUBAY_LOGO = "/assets/subaylogo.png";
+const SUBAY_LOGO = "/assets/subay.webp";
 
-/** The event wordmark. It is white, so it needs `bg-subay` or another saturated surface behind it. */
+/** The event artwork. Its lower half fades to transparent, so it needs `bg-subay` or another saturated surface behind it. */
 export function EventLogo({ name, className }: { name: string; className?: string }) {
-  return <img src={SUBAY_LOGO} alt={name} className={cn("drop-shadow-[0_0_24px_rgb(255_255_255/0.45)]", className)} />;
+  return <img src={SUBAY_LOGO} alt={name} width={662} height={720} className={cn("w-auto", className)} />;
 }
 
 export function sgdLabel(topic: Topic): string {
