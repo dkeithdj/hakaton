@@ -126,6 +126,7 @@ it("viewer shows the timer, schedule, and team progress", async () => {
   mockApi(makeState(), null);
   renderPage(<Viewer />);
   expect(await screen.findByRole("heading", { name: "Test Hack" })).toBeTruthy();
+  expect(screen.getByRole("img", { name: "Test Hack" }).getAttribute("src")).toBe("/assets/subay.webp");
   expect(screen.getByText("03:00:00")).toBeTruthy();
   expect(screen.getByText("Kickoff")).toBeTruthy();
   expect(screen.getByText("Team Alpha")).toBeTruthy();

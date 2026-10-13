@@ -35,18 +35,24 @@ export default function Viewer() {
 
   return (
     <PageShell state={state} now={now}>
-      <section className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 rounded-3xl bg-subay px-6 py-5 text-white sm:justify-between">
-        <div className="flex flex-col items-center gap-1 sm:items-start">
-          <h1>
-            <EventLogo name={settings.eventName} className="w-full max-w-64" />
-          </h1>
-          {settings.tagline && <p className="text-lg text-white/85">{settings.tagline}</p>}
-        </div>
-        <div className="flex flex-col items-center gap-1 sm:items-end">
+      <section className="grid items-center justify-items-center gap-x-6 gap-y-3 overflow-hidden rounded-3xl bg-subay px-4 py-5 text-white sm:px-6 md:min-h-44 md:grid-cols-[1fr_auto_1fr] lg:min-h-52">
+        {/* The artwork is taller than the banner, so its fading base runs off the bottom edge. Phones get no logo. */}
+        <h1 className="max-md:sr-only md:relative md:col-start-2 md:row-start-1 md:w-60 md:self-stretch lg:w-72">
+          <EventLogo
+            name={settings.eventName}
+            className="max-w-none md:absolute md:-top-2 md:left-1/2 md:h-64 md:-translate-x-1/2 lg:h-80"
+          />
+        </h1>
+        {settings.tagline && (
+          <p className="text-center text-base text-balance text-white/85 sm:text-lg md:col-start-1 md:row-start-1 md:justify-self-start md:text-left">
+            {settings.tagline}
+          </p>
+        )}
+        <div className="flex flex-col items-center gap-1 md:col-start-3 md:row-start-1 md:items-end md:justify-self-end">
           <p className="text-sm tracking-widest text-white/85 uppercase">
             {phase === "upcoming" ? "Hackathon duration" : "Time remaining"}
           </p>
-          <HackTimer settings={settings} now={now} className="text-6xl leading-none text-white sm:text-7xl" />
+          <HackTimer settings={settings} now={now} className="text-5xl leading-none text-white sm:text-6xl md:text-5xl lg:text-6xl xl:text-7xl" />
         </div>
       </section>
 
