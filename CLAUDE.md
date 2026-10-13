@@ -22,11 +22,11 @@ First-time setup: `cp .dev.vars.example .dev.vars`, then `npm run db:migrate:loc
 
 | Path | Contents |
 | --- | --- |
-| `worker/index.ts` | Hono app: sessions, public state, voting, `/api/participant/*`, `/api/admin/*` |
+| `worker/index.ts` | Hono app: sessions, public state, voting, judging, `/api/participant/*`, `/api/admin/*` |
 | `worker/resources.ts` | `RESOURCES` table: field definitions driving generic CRUD and validation for the admin-editable tables |
 | `worker/settings.ts` | Key/value settings stored in D1, merged over `DEFAULT_SETTINGS` |
 | `shared/types.ts` | Types and upload limits shared by the Worker and the client |
-| `src/pages/` | One file per route: `Viewer` (`/`), `Participant`, `Vote`, `Admin`, `Privacy` |
+| `src/pages/` | One file per route: `Viewer` (`/`), `Participant`, `Vote`, `Judge`, `Admin`, `Privacy` |
 | `src/components/` | App components; `ui/` holds shadcn components |
 | `src/lib/api.ts` | `api()` fetch wrapper, `ApiError`, `useEventState` polling hook |
 | `migrations/` | D1 migrations, applied in numeric order |
@@ -44,8 +44,10 @@ First-time setup: `cp .dev.vars.example .dev.vars`, then `npm run db:migrate:loc
 - Admin CRUD goes through `/api/admin/resources/:resource`. To make a new table editable, add an entry to `RESOURCES` instead of writing new routes.
 - Uploads are multipart: create, `PUT` each part, then complete. Objects live in R2 and metadata in D1.
 - Clients poll `/api/state` and apply `clockOffset` so countdowns follow server time.
-- `DELETE /api/admin/participant-data` is the after-event purge: it clears members, goals, progress, and all uploads, keeping team names and votes. `src/pages/Privacy.tsx` describes this, so update the policy when what is stored or deleted changes.
-- While voting is open, the public state exposes only the number of ballots. Scores go to the admin, and to everyone once results are published.
+- Judges are a `RESOURCES` entry the admin manages. A judge signs in at `/judge` by typing their name, with no password, and a separate signed `judge` cookie holds the judge id. Each judge scores a team on the criteria in `JUDGE_CRITERIA` (pitch 25, demo 40, impact 35). Judging is not tied to the voting window: `PUT /api/judge/scores` works until results are published.
+- The final score is 80% average judge total (out of 100) and 20% audience average (out of 5), computed by `finalScore()` in `shared/types.ts`. Publishing requires every judge to have scored every team.
+- `DELETE /api/admin/participant-data` is the after-event purge: it clears members, goals, progress, judge names, and all uploads, keeping team names, votes, and judge scores. `src/pages/Privacy.tsx` describes this, so update the policy when what is stored or deleted changes.
+- While voting is open, the public state exposes only the number of ballots. Scores go to the admin, and to everyone once results are published. Judge names and per-judge scores go only to the admin.
 
 ## Conventions
 

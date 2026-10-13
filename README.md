@@ -11,12 +11,17 @@ Participants can see what to do and track their progress, everyone can follow a 
 - Set the hackathon timer (default: 3 hours).
 - Run a voting round that anyone with the QR code or link can join.
   - Voting is time-gated (default: 2 minutes); once it closes, voters can no longer submit.
-  - Votes pick the team with the best pitch and demo presentation after the hackathon ends.
+  - Votes count for 20% of each team's final score; the judges' scores count for 80%.
+- Add the judges who may score, see every judge's scores, and publish the final ranking.
 
 ## Participant page
 
 - A team workspace showing the challenge, resources, and the team's progress.
 - Teams can optionally upload their pitch decks and demo videos so the tech team has a backup in case of internet issues.
+
+## Judge page
+
+- A judge the admin has added enters their username and scores each team on pitch (25), demo (40), and impact (35), at any time before results are published.
 
 ## Voting page
 
@@ -45,7 +50,8 @@ Participants can see what to do and track their progress, everyone can follow a 
 | `/` | Anyone | Live status, timer, program flow, team progress, results once published |
 | `/participant` | Each team, with its own team password | Team workspace: timer, SGD picker, checklist, prompt library, toolbox, pitch timer, backup uploads |
 | `/vote` | Anyone with the QR code or link | Rate every team 1 to 5, once, while voting is open |
-| `/admin` | Admin password | Teams, topics, schedule, prompts, tools, timer, voting, uploads, settings, deleting participant data |
+| `/judge` | Judges the admin added, by username | Score every team on pitch, demo, and impact, any time until results are published |
+| `/admin` | Admin password | Teams, judges, topics, schedule, prompts, tools, timer, voting, uploads, settings, deleting participant data |
 | `/privacy` | Anyone | Privacy policy, linked from every page footer and the sign-in cards |
 
 ## Local development
@@ -90,9 +96,19 @@ It **replaces every resource and prompt**, including anything edited in Admin �
 - One ballot per browser, enforced with a signed cookie. A private window counts as a new voter, so this relies on voting happening in the room.
 - While voting is open, everyone sees only the number of votes registered. Scores are visible to the admin, and to everyone after the admin publishes results.
 
+## How judging and the final score work
+
+- The ranking is 80% judges and 20% audience vote. The weights are fixed in `shared/types.ts`.
+- The admin adds each judge under the Judges tab, with a username. Any number of judges can be added, and only those usernames can sign in.
+- Judges open `/judge` and enter their username (letter case does not matter). There is no password, so a username works like one: pick usernames that are not easy to guess and give each judge theirs privately.
+- A judge scores each team on three criteria: pitch out of 25, demo out of 40, and impact out of 35, for a total out of 100. The criteria and their maximums are `JUDGE_CRITERIA` in `shared/types.ts`.
+- Judging does not depend on the voting window: scores can be entered or changed before, during, or after voting, until results are published.
+- Final score out of 100 = `0.8 × (average judge total) + 0.2 × (average audience rating ÷ 5 × 100)`.
+- The Control tab shows every judge's scores. Results can be published only when every judge has scored every team; remove a judge who did not finish under the Judges tab, which deletes their scores.
+
 ## Privacy and data deletion
 
-- The database holds team names, member names, each team's chosen goals and checklist progress, and anonymous ballots. Uploaded decks and videos live in R2.
+- The database holds team names, member names, each team's chosen goals and checklist progress, anonymous ballots, and judge usernames with their scores. Uploaded decks and videos live in R2.
 - The policy at `/privacy` tells participants this data is used only for the hackathon and deleted when it ends. Keep it true: after the event, open the Control tab and press **Delete participant data**.
-- That button erases member names, chosen goals, checklist progress, and every uploaded file for all teams. Team names and vote scores stay. Download any files you still need first.
+- That button erases member names, judge usernames, chosen goals, checklist progress, and every uploaded file for all teams. Team names, vote scores, and judge scores stay. Download any files you still need first.
 - D1 keeps point-in-time backups for up to 30 days, so deleted rows remain restorable by the Cloudflare account owner until those expire.
