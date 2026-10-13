@@ -66,7 +66,10 @@ export default function Vote() {
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {teams.map((team) => (
                 <fieldset key={team.id} className="flex flex-col gap-2">
-                  <legend className="mb-2 font-medium">{team.name}</legend>
+                  <legend className="mb-2 flex flex-col">
+                    <span className="font-medium">{team.name}</span>
+                    {team.projectTitle && <span className="text-sm text-muted-foreground">{team.projectTitle}</span>}
+                  </legend>
                   <div className="grid grid-cols-5 gap-2">
                     {RATINGS.map((value) => (
                       <Button

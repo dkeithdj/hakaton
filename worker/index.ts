@@ -361,7 +361,7 @@ participant.put("/teams/:id", async (c) => {
     const known = new Set<unknown>(results.map((row) => row.id));
     if (!body.topicIds.every((id) => known.has(id))) bad("Unknown topic");
   }
-  const team = await updateResource(c.env.DB, "teams", teamId, body, ["topicIds", "progress"]);
+  const team = await updateResource(c.env.DB, "teams", teamId, body, ["projectTitle", "topicIds", "progress"]);
   return c.json(toPublicTeam(team as unknown as AdminTeam));
 });
 
@@ -671,7 +671,7 @@ admin.delete("/participant-data", async (c) => {
   // Storage goes first: if it fails, the rows are still there for a retry.
   await db.batch([
     db.prepare("DELETE FROM uploads"),
-    db.prepare("UPDATE teams SET members = '[]', topic_ids = '[]', progress = '[]'"),
+    db.prepare("UPDATE teams SET project_title = '', members = '[]', topic_ids = '[]', progress = '[]'"),
     // The scores stay so the results still add up; a blank name also signs the judge out for good.
     db.prepare("UPDATE judges SET name = ''"),
   ]);

@@ -184,9 +184,14 @@ function Scoresheet({ state, judge, saved }: { state: ClientState; judge: JudgeI
                 const complete = !isBlank(draft) && isValid(draft);
                 return (
                   <fieldset key={team.id} className="flex flex-col gap-2">
-                    <legend className="mb-2 flex w-full items-baseline justify-between font-medium">
-                      {team.name}
-                      <span className="font-mono text-sm text-muted-foreground tabular-nums">
+                    <legend className="mb-2 flex w-full items-baseline justify-between gap-3 font-medium">
+                      <span className="flex min-w-0 flex-col">
+                        {team.name}
+                        {team.projectTitle && (
+                          <span className="text-sm font-normal text-muted-foreground">{team.projectTitle}</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 font-mono text-sm text-muted-foreground tabular-nums">
                         {complete ? JUDGE_CRITERIA.reduce((total, { key }) => total + Number(draft[key]), 0) : "–"} /{" "}
                         {JUDGE_MAX_SCORE}
                       </span>

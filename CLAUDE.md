@@ -46,7 +46,7 @@ First-time setup: `cp .dev.vars.example .dev.vars`, then `npm run db:migrate:loc
 - Clients poll `/api/state` and apply `clockOffset` so countdowns follow server time.
 - Judges are a `RESOURCES` entry the admin manages. A judge signs in at `/judge` by typing their name, with no password, and a separate signed `judge` cookie holds the judge id. Each judge scores a team on the criteria in `JUDGE_CRITERIA` (pitch 25, demo 40, impact 35). Judging is not tied to the voting window: `PUT /api/judge/scores` works until results are published.
 - The final score is 80% average judge total (out of 100) and 20% audience average (out of 5), computed by `finalScore()` in `shared/types.ts`. Publishing requires every judge to have scored every team.
-- `DELETE /api/admin/participant-data` is the after-event purge: it clears members, goals, progress, judge names, and all uploads, keeping team names, votes, and judge scores. `src/pages/Privacy.tsx` describes this, so update the policy when what is stored or deleted changes.
+- `DELETE /api/admin/participant-data` is the after-event purge: it clears members, project titles, goals, progress, judge names, and all uploads, keeping team names, votes, and judge scores. `src/pages/Privacy.tsx` describes this, so update the policy when what is stored or deleted changes.
 - While voting is open, the public state exposes only the number of ballots. Scores go to the admin, and to everyone once results are published. Judge names and per-judge scores go only to the admin.
 
 ## Conventions

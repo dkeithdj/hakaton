@@ -85,6 +85,7 @@ export default function Viewer() {
                 return (
                   <div key={team.id} className="flex flex-col gap-1.5 rounded-lg border p-3">
                     <p className="font-medium">{team.name}</p>
+                    {team.projectTitle && <p className="text-sm">{team.projectTitle}</p>}
                     <p className="text-sm text-muted-foreground">{team.members.join(", ") || "No members listed"}</p>
                     {chosen.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
