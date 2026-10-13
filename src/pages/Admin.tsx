@@ -89,7 +89,7 @@ function Dashboard({ state }: { state: ClientState }) {
       }
     >
       <Tabs defaultValue="control">
-        <TabsList className="flex-wrap">
+        <TabsList className="max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto">
           <TabsTrigger value="control">Control</TabsTrigger>
           <TabsTrigger value="teams">Teams</TabsTrigger>
           <TabsTrigger value="judges">Judges</TabsTrigger>

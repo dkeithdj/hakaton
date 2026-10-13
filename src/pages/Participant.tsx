@@ -137,15 +137,8 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
       </Dialog>
 
       <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded-2xl bg-subay px-6 py-3 text-white">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div>
           {team && <p className="font-heading text-xl font-semibold">{team.name}</p>}
-          {team && (
-            <ProjectTitle
-              key={team.id}
-              value={team.projectTitle}
-              onSave={(projectTitle, done) => updateTeam.mutate({ projectTitle }, { onSettled: done })}
-            />
-          )}
           <p className="text-sm tracking-widest text-white/85 uppercase">
             {phase === "upcoming" ? "Sprint duration" : "Sprint time remaining"}
           </p>
@@ -153,7 +146,20 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
         <HackTimer settings={settings} now={now} className="text-5xl leading-none text-white sm:text-6xl" />
       </section>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      {team && (
+        <Section
+          title="Project title"
+          description="Voters and judges see this under your team name. You can change it any time."
+        >
+          <ProjectTitle
+            key={team.id}
+            value={team.projectTitle}
+            onSave={(projectTitle, done) => updateTeam.mutate({ projectTitle }, { onSettled: done })}
+          />
+        </Section>
+      )}
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <div className="flex flex-col gap-4">
           {phase === "voting" && (
             <Section title="Voting is live!" description="Scan to rate every team's pitch and demo.">
@@ -388,7 +394,6 @@ function ProjectTitle({ value, onSave }: { value: string; onSave: (title: string
 
   return (
     <form
-      className="max-w-md"
       onSubmit={(event) => {
         event.preventDefault();
         commit();
@@ -398,7 +403,7 @@ function ProjectTitle({ value, onSave }: { value: string; onSave: (title: string
         aria-label="Project title"
         placeholder="Add your project title"
         maxLength={100}
-        className="border-white/40 bg-white/15 text-white placeholder:text-white/70"
+        className="h-auto py-2 font-heading text-xl font-semibold md:text-xl"
         value={draft ?? value}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
@@ -508,7 +513,7 @@ function PromptCard({ prompt, tools }: { prompt: Prompt; tools: Tool[] }) {
     .find((entry) => prompt.tool.toLowerCase().includes(entry.name.toLowerCase()));
   return (
     <div className="flex flex-col gap-2 rounded-lg border p-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{prompt.title}</span>
         {prompt.tool && (
           <Badge variant="secondary" className="gap-1.5">
