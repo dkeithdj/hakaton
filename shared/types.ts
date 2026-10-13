@@ -94,10 +94,59 @@ export interface Material {
   sort: number;
 }
 
+/** Judges count for most of the final score; the audience vote makes up the rest. */
+export const JUDGE_WEIGHT = 0.8;
+export const AUDIENCE_WEIGHT = 0.2;
+/** What each judge scores a team on, and the most points each criterion is worth. */
+export const JUDGE_CRITERIA = [
+  { key: "pitch", label: "Pitch", max: 25 },
+  { key: "demo", label: "Demo", max: 40 },
+  { key: "impact", label: "Impact", max: 35 },
+] as const;
+export type JudgeCriterion = (typeof JUDGE_CRITERIA)[number]["key"];
+export type CriteriaScores = Record<JudgeCriterion, number>;
+export const JUDGE_MAX_SCORE = JUDGE_CRITERIA.reduce((total, criterion) => total + criterion.max, 0);
+export const AUDIENCE_MAX_RATING = 5;
+
 export interface TeamResult {
   teamId: number;
-  average: number;
-  count: number;
+  /** Weighted total out of 100. A side with no scores yet counts as zero. */
+  final: number;
+  /** Mean of the judges' totals out of JUDGE_MAX_SCORE; null until a judge scores the team. */
+  judgeAverage: number | null;
+  judgeCount: number;
+  /** Mean audience rating out of AUDIENCE_MAX_RATING; null until someone rates the team. */
+  audienceAverage: number | null;
+  audienceCount: number;
+}
+
+export function finalScore(judgeAverage: number | null, audienceAverage: number | null): number {
+  const judges = ((judgeAverage ?? 0) / JUDGE_MAX_SCORE) * 100;
+  const audience = ((audienceAverage ?? 0) / AUDIENCE_MAX_RATING) * 100;
+  return JUDGE_WEIGHT * judges + AUDIENCE_WEIGHT * audience;
+}
+
+export interface Judge {
+  id: number;
+  /** Set by the admin; the judge types it to sign in. Blank once participant data is deleted. */
+  name: string;
+  sort: number;
+}
+
+export interface JudgeScore extends CriteriaScores {
+  judgeId: number;
+  teamId: number;
+}
+
+export function judgeTotal(scores: CriteriaScores): number {
+  return JUDGE_CRITERIA.reduce((total, criterion) => total + scores[criterion.key], 0);
+}
+
+/** What /judge loads: who is signed in on this browser and what they have scored so far. */
+export interface JudgeSession {
+  judge: Judge | null;
+  /** Keyed by team id. */
+  scores: Record<number, CriteriaScores>;
 }
 
 export interface EventState {

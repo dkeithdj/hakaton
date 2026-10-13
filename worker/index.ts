@@ -5,10 +5,16 @@ import { createMiddleware } from "hono/factory";
 import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
 import {
+  JUDGE_CRITERIA,
   UPLOAD_LIMITS,
   UPLOAD_PART_SIZE,
+  finalScore,
   type AdminTeam,
+  type CriteriaScores,
   type EventState,
+  type Judge,
+  type JudgeScore,
+  type JudgeSession,
   type Material,
   type Me,
   type Prompt,
@@ -38,6 +44,7 @@ type AppContext = Context<AppEnv>;
 
 const SESSION_COOKIE = "session";
 const VOTER_COOKIE = "voter";
+const JUDGE_COOKIE = "judge";
 const SESSION_MAX_AGE = 60 * 60 * 12;
 const VOTER_MAX_AGE = 60 * 60 * 24;
 
@@ -140,13 +147,19 @@ function toPublicTeam(team: AdminTeam): Team {
   return rest;
 }
 
+/** One row per team, including teams nobody has scored yet. */
 async function computeResults(db: D1Database): Promise<TeamResult[]> {
   const { results } = await db
     .prepare(
-      "SELECT team_id AS teamId, AVG(rating) AS average, COUNT(*) AS count FROM ratings GROUP BY team_id",
+      "SELECT t.id AS teamId, j.average AS judgeAverage, COALESCE(j.count, 0) AS judgeCount, " +
+        "a.average AS audienceAverage, COALESCE(a.count, 0) AS audienceCount FROM teams t " +
+        "LEFT JOIN (SELECT team_id, AVG(pitch + demo + impact) AS average, COUNT(*) AS count FROM judge_scores GROUP BY team_id) j " +
+        "ON j.team_id = t.id " +
+        "LEFT JOIN (SELECT team_id, AVG(rating) AS average, COUNT(*) AS count FROM ratings GROUP BY team_id) a " +
+        "ON a.team_id = t.id ORDER BY t.sort, t.id",
     )
-    .all<TeamResult>();
-  return results;
+    .all<Omit<TeamResult, "final">>();
+  return results.map((row) => ({ ...row, final: finalScore(row.judgeAverage, row.audienceAverage) }));
 }
 
 // ---------------------------------------------------------------- public
@@ -249,6 +262,80 @@ app.post("/api/vote", async (c) => {
     throw error;
   }
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------- judging
+
+/** The judge signed in on this browser, or null. A judge whose name was purged or who was removed is signed out. */
+async function getJudge(c: AppContext): Promise<Judge | null> {
+  const id = Number(await getSignedCookie(c, c.env.SESSION_SECRET, JUDGE_COOKIE));
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return c.env.DB.prepare("SELECT id, name, sort FROM judges WHERE id = ? AND name <> ''").bind(id).first<Judge>();
+}
+
+async function judgeSession(db: D1Database, judge: Judge | null): Promise<JudgeSession> {
+  if (!judge) return { judge: null, scores: {} };
+  const { results } = await db
+    .prepare("SELECT team_id AS teamId, pitch, demo, impact FROM judge_scores WHERE judge_id = ?")
+    .bind(judge.id)
+    .all<CriteriaScores & { teamId: number }>();
+  return { judge, scores: Object.fromEntries(results.map(({ teamId, ...scores }) => [teamId, scores])) };
+}
+
+app.get("/api/judge", async (c) => c.json(await judgeSession(c.env.DB, await getJudge(c))));
+
+// There is no password: a judge types the name the admin added for them, on any device.
+app.post("/api/judge/login", async (c) => {
+  const db = c.env.DB;
+  const { username } = await readJson(c);
+  if (typeof username !== "string" || username.trim() === "") bad("Enter your username");
+  const judge = await db.prepare("SELECT id, name, sort FROM judges WHERE name = ?").bind(username.trim()).first<Judge>();
+  if (!judge) throw new HTTPException(401, { message: "No judge with that username. Ask the organizers to add you." });
+  await setSignedCookie(c, JUDGE_COOKIE, String(judge.id), c.env.SESSION_SECRET, cookieOptions(c, SESSION_MAX_AGE));
+  return c.json(await judgeSession(db, judge));
+});
+
+app.post("/api/judge/logout", (c) => {
+  deleteCookie(c, JUDGE_COOKIE, { path: "/" });
+  return c.json({ ok: true });
+});
+
+// Judging has no window of its own: scores can be entered or changed any time before results are published.
+app.put("/api/judge/scores", async (c) => {
+  const db = c.env.DB;
+  const judge = await getJudge(c);
+  if (!judge) throw new HTTPException(401, { message: "Not signed in" });
+  if ((await getSettings(db)).resultsPublished) bad("Results are published, so scores are locked", 403);
+
+  const { scores } = await readJson(c);
+  if (typeof scores !== "object" || scores === null || Array.isArray(scores)) bad("Missing scores");
+  const { results: teams } = await db.prepare("SELECT id FROM teams").all<{ id: number }>();
+  const known = new Set(teams.map((team) => team.id));
+  const statements = Object.entries(scores as Record<string, unknown>).map(([key, entry]) => {
+    const teamId = Number(key);
+    if (!known.has(teamId)) bad("Unknown team");
+    // null clears a team scored by mistake.
+    if (entry === null) {
+      return db.prepare("DELETE FROM judge_scores WHERE judge_id = ? AND team_id = ?").bind(judge.id, teamId);
+    }
+    if (typeof entry !== "object" || Array.isArray(entry)) bad("Invalid scores");
+    // A team is scored on every criterion at once, so a total is never missing a part.
+    const points = JUDGE_CRITERIA.map(({ key: criterion, label, max }) => {
+      const value = (entry as Record<string, unknown>)[criterion];
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) {
+        bad(`${label} must be between 0 and ${max}`);
+      }
+      return value;
+    });
+    return db
+      .prepare(
+        "INSERT INTO judge_scores (judge_id, team_id, pitch, demo, impact) VALUES (?, ?, ?, ?, ?) " +
+          "ON CONFLICT(judge_id, team_id) DO UPDATE SET pitch = excluded.pitch, demo = excluded.demo, impact = excluded.impact",
+      )
+      .bind(judge.id, teamId, ...points);
+  });
+  if (statements.length > 0) await db.batch(statements);
+  return c.json(await judgeSession(db, judge));
 });
 
 // ---------------------------------------------------------------- participant
@@ -397,7 +484,7 @@ admin.use(requireRole("admin"));
 
 admin.get("/data", async (c) => {
   const db = c.env.DB;
-  const [settings, teams, materials, prompts, tools, uploads, results] = await Promise.all([
+  const [settings, teams, materials, prompts, tools, uploads, results, judges, judgeScores] = await Promise.all([
     getSettings(db),
     listResource<AdminTeam>(db, "teams"),
     listResource<Material>(db, "materials"),
@@ -405,8 +492,20 @@ admin.get("/data", async (c) => {
     listResource<Tool>(db, "tools"),
     db.prepare("SELECT * FROM uploads WHERE status = 'done' ORDER BY team_id, created_at DESC").all<UploadRow>(),
     computeResults(db),
+    listResource<Judge>(db, "judges"),
+    db.prepare("SELECT judge_id AS judgeId, team_id AS teamId, pitch, demo, impact FROM judge_scores").all<JudgeScore>(),
   ]);
-  return c.json({ settings, teams, materials, prompts, tools, uploads: uploads.results.map(toUpload), results });
+  return c.json({
+    settings,
+    teams,
+    materials,
+    prompts,
+    tools,
+    uploads: uploads.results.map(toUpload),
+    results,
+    judges,
+    judgeScores: judgeScores.results,
+  });
 });
 
 admin.put("/settings", async (c) => {
@@ -499,10 +598,22 @@ admin.post("/voting/:action", async (c) => {
         ...settingsStatements(db, { voteEndsAt: null, resultsPublished: false }),
       ]);
       break;
-    case "publish":
+    case "publish": {
       if (settings.voteEndsAt === null || now < settings.voteEndsAt) bad("Close voting before publishing", 409);
+      // Averaging over different sets of judges would not be fair, so every judge has to score every team.
+      const judging = await db
+        .prepare(
+          "SELECT (SELECT COUNT(*) FROM judges) AS judges, " +
+            "(SELECT COUNT(*) FROM judges) * (SELECT COUNT(*) FROM teams) - (SELECT COUNT(*) FROM judge_scores) AS missing",
+        )
+        .first<{ judges: number; missing: number }>();
+      if (judging!.judges === 0) bad("Add at least one judge before publishing", 409);
+      if (judging!.missing > 0) {
+        bad(`${judging!.missing} judge ${judging!.missing === 1 ? "score is" : "scores are"} missing`, 409);
+      }
       await saveSettings(db, { resultsPublished: true });
       break;
+    }
     case "unpublish":
       await saveSettings(db, { resultsPublished: false });
       break;
@@ -546,7 +657,7 @@ admin.delete("/uploads/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-// Run once the event is over: erases member names and everything teams made, leaving team names and scores.
+// Run once the event is over: erases member and judge names and everything teams made, leaving team names and scores.
 admin.delete("/participant-data", async (c) => {
   const db = c.env.DB;
   const pending = await db.prepare("SELECT * FROM uploads WHERE status = 'pending'").all<UploadRow>();
@@ -561,6 +672,8 @@ admin.delete("/participant-data", async (c) => {
   await db.batch([
     db.prepare("DELETE FROM uploads"),
     db.prepare("UPDATE teams SET members = '[]', topic_ids = '[]', progress = '[]'"),
+    // The scores stay so the results still add up; a blank name also signs the judge out for good.
+    db.prepare("UPDATE judges SET name = ''"),
   ]);
   return c.json({ ok: true });
 });
@@ -581,17 +694,28 @@ function withTeamPassword(body: Record<string, unknown>, creating: boolean): Rec
   return body;
 }
 
+/** Judges sign in by name, so two judges cannot share one. */
+function rejectDuplicate(error: unknown): never {
+  if (String(error).includes("UNIQUE")) bad("That name is already taken", 409);
+  throw error;
+}
+
 admin.post("/resources/:resource", async (c) => {
   const name = resourceParam(c);
   const body = await readJson(c);
-  return c.json(await createResource(c.env.DB, name, name === "teams" ? withTeamPassword(body, true) : body), 201);
+  const created = await createResource(c.env.DB, name, name === "teams" ? withTeamPassword(body, true) : body).catch(
+    rejectDuplicate,
+  );
+  return c.json(created, 201);
 });
 
 admin.put("/resources/:resource/:id", async (c) => {
   const name = resourceParam(c);
   const body = await readJson(c);
   return c.json(
-    await updateResource(c.env.DB, name, idParam(c), name === "teams" ? withTeamPassword(body, false) : body),
+    await updateResource(c.env.DB, name, idParam(c), name === "teams" ? withTeamPassword(body, false) : body).catch(
+      rejectDuplicate,
+    ),
   );
 });
 

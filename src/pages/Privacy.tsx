@@ -33,7 +33,11 @@ export default function Privacy() {
               email, or account is attached to it.
             </li>
             <li>
-              <strong>Cookies.</strong> One keeps a team or organizer signed in for up to 12 hours. One holds the
+              <strong>Judge scores.</strong> The organizers enter a username for each judge, and each judge scores
+              every team on pitch, demo, and impact. The username and the scores are stored.
+            </li>
+            <li>
+              <strong>Cookies.</strong> One keeps a team, judge, or organizer signed in for up to 12 hours. One holds the
               random voter id for up to 24 hours, so each browser votes once. There are no advertising or analytics
               trackers.
             </li>
@@ -43,7 +47,8 @@ export default function Privacy() {
         <Section title="Why we hold it">
           <p className="text-sm">
             For the sole purpose of running this hackathon: showing teams and their progress on the live page, keeping
-            a backup of each team's deck and video in case the venue's internet fails, and counting the audience vote.
+            a backup of each team's deck and video in case the venue's internet fails, and working out the final scores
+            from the judges and the audience vote.
             It is not used for marketing, not sold, and not shared with anyone outside the organizing team.
           </p>
         </Section>
@@ -53,6 +58,10 @@ export default function Privacy() {
             <li>Team names, member names, chosen goals, and checklist progress appear on the public live page.</li>
             <li>Uploaded files can be downloaded only by the organizers. Other teams and the public cannot open them.</li>
             <li>Individual ballots are never shown. Only vote counts and average scores are.</li>
+            <li>
+              Judge usernames and each judge's own scores are visible only to the organizers. The public sees the
+              judges' average for each team.
+            </li>
           </ul>
         </Section>
 
@@ -70,8 +79,9 @@ export default function Privacy() {
 
         <Section title="When it is deleted">
           <p className="text-sm">
-            When the event finishes, the organizers delete all member names, every team's chosen goals and checklist
-            progress, and every uploaded file. Only team names and the anonymous vote scores remain. The hosting
+            When the event finishes, the organizers delete all member names, all judge usernames, every team's chosen
+            goals and checklist progress, and every uploaded file. Only team names and the anonymous vote and judge
+            scores remain. The hosting
             provider's automatic database backups expire within 30 days of that.
           </p>
         </Section>

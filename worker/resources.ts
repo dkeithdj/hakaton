@@ -66,6 +66,10 @@ export const RESOURCES = {
       sort,
     ],
   },
+  judges: {
+    table: "judges",
+    fields: [{ key: "name", column: "name", type: "string", required: true, max: 50 }, sort],
+  },
   tools: {
     table: "tools",
     fields: [

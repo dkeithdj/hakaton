@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import Admin from "@/pages/Admin";
+import Judge from "@/pages/Judge";
 import Participant from "@/pages/Participant";
 import Privacy from "@/pages/Privacy";
 import Viewer from "@/pages/Viewer";
 import Vote from "@/pages/Vote";
-import type { EventState, PublicSettings, Role } from "../shared/types";
+import type { EventState, PublicSettings, Role, TeamResult } from "../shared/types";
 
 const baseSettings: PublicSettings = {
   eventName: "Test Hack",
@@ -45,6 +46,11 @@ function makeState(settings: Partial<PublicSettings> = {}, extra: Partial<EventS
   };
 }
 
+const results: TeamResult[] = [
+  { teamId: 1, final: 70, judgeAverage: 70, judgeCount: 2, audienceAverage: 3.5, audienceCount: 7 },
+  { teamId: 2, final: 85, judgeAverage: 85, judgeCount: 2, audienceAverage: 4.25, audienceCount: 7 },
+];
+
 let routes: Record<string, unknown>;
 let calls: { method: string; path: string; body: unknown }[];
 
@@ -72,11 +78,18 @@ function mockApi(state: EventState, role: Role | null, hasVoted = false) {
       prompts: [],
       tools: [],
       uploads: [{ id: 1, teamId: 1, kind: "deck", filename: "deck.pdf", size: 2_000_000, createdAt: Date.now() }],
-      results: [
-        { teamId: 1, average: 3.5, count: 7 },
-        { teamId: 2, average: 4.25, count: 7 },
+      results,
+      judges: [
+        { id: 1, name: "Ana", sort: 1 },
+        { id: 2, name: "Ben", sort: 2 },
+      ],
+      judgeScores: [
+        { judgeId: 1, teamId: 1, pitch: 15, demo: 24, impact: 21 },
+        { judgeId: 1, teamId: 2, pitch: 22, demo: 36, impact: 32 },
+        { judgeId: 2, teamId: 1, pitch: 20, demo: 32, impact: 28 },
       ],
     },
+    "/api/judge": { judge: null, scores: {} },
   };
 }
 
@@ -144,14 +157,12 @@ it("viewer keeps the count on screen after voting closes", async () => {
 });
 
 it("viewer shows scores once results are published", async () => {
-  const results = [
-    { teamId: 1, average: 3.5, count: 7 },
-    { teamId: 2, average: 4.25, count: 7 },
-  ];
   mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results }), null);
   renderPage(<Viewer />);
   expect(await screen.findByText("1. Team Bravo")).toBeTruthy();
-  expect(screen.getByText("4.25 / 5")).toBeTruthy();
+  expect(screen.getByText("85.0 / 100")).toBeTruthy();
+  expect(screen.getByText(/Judges 85\.0 \/ 100 · Audience 4\.25 \/ 5 \(7 votes\)/)).toBeTruthy();
+  expect(screen.getByText(/80% judges, 20% audience vote/)).toBeTruthy();
 });
 
 it("vote page waits until voting opens", async () => {
@@ -186,6 +197,59 @@ it("vote page disables rating once voting has closed", async () => {
   const closed = await screen.findByRole("button", { name: "Voting is closed" });
   expect((closed as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole("button", { name: "Rate Team Alpha 4 out of 5" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+const ana = { id: 1, name: "Ana", sort: 1 };
+
+it("judge page asks for a username when signed out", async () => {
+  const user = userEvent.setup();
+  mockApi(makeState(), null);
+  routes["/api/judge/login"] = { judge: ana, scores: {} };
+  renderPage(<Judge />);
+  await user.type(await screen.findByLabelText("Username"), "Ana");
+  await user.click(screen.getByRole("button", { name: "Enter" }));
+  expect(await screen.findByText("Judging as Ana")).toBeTruthy();
+  expect(calls.find((call) => call.path === "/api/judge/login")?.body).toEqual({ username: "Ana" });
+});
+
+it("judge page saves pitch, demo, and impact points for each team, with voting not open", async () => {
+  const user = userEvent.setup();
+  const alpha = { pitch: 15, demo: 24, impact: 21 };
+  const bravo = { pitch: 20, demo: 38.5, impact: 30 };
+  mockApi(makeState(), null);
+  routes["/api/judge"] = { judge: ana, scores: { 1: alpha } };
+  routes["/api/judge/scores"] = { judge: ana, scores: { 1: alpha, 2: bravo } };
+  renderPage(<Judge />);
+  expect(((await screen.findByLabelText("Team Alpha demo out of 40")) as HTMLInputElement).value).toBe("24");
+  expect(screen.getByText("60 / 100")).toBeTruthy();
+  expect(screen.getByText("1 of 2 scored")).toBeTruthy();
+  const save = screen.getByRole("button", { name: "Save scores" }) as HTMLButtonElement;
+  expect(save.disabled).toBe(true);
+
+  // A team needs all three criteria, each within its own maximum.
+  await user.type(screen.getByLabelText("Team Bravo pitch out of 25"), "26");
+  await user.type(screen.getByLabelText("Team Bravo demo out of 40"), "38.5");
+  expect(save.disabled).toBe(true);
+  await user.type(screen.getByLabelText("Team Bravo impact out of 35"), "30");
+  expect(save.disabled).toBe(true);
+  await user.clear(screen.getByLabelText("Team Bravo pitch out of 25"));
+  await user.type(screen.getByLabelText("Team Bravo pitch out of 25"), "20");
+  expect(screen.getByText("88.5 / 100")).toBeTruthy();
+  await user.click(save);
+  expect(await screen.findByText("2 of 2 scored")).toBeTruthy();
+  expect(calls.find((call) => call.path === "/api/judge/scores")).toEqual({
+    method: "PUT",
+    path: "/api/judge/scores",
+    body: { scores: { 1: alpha, 2: bravo } },
+  });
+});
+
+it("judge page locks scores once results are published", async () => {
+  mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results }), null);
+  routes["/api/judge"] = { judge: ana, scores: { 1: { pitch: 15, demo: 24, impact: 21 } } };
+  renderPage(<Judge />);
+  expect(((await screen.findByLabelText("Team Alpha pitch out of 25")) as HTMLInputElement).disabled).toBe(true);
+  expect(screen.getByText("Results are published, so scores are locked.")).toBeTruthy();
 });
 
 it("participant page asks for a team and its password when signed out", async () => {
@@ -277,13 +341,52 @@ it("admin deletes participant data only after confirming", async () => {
   );
 });
 
+it("admin reviews every score before publishing results", async () => {
+  const user = userEvent.setup();
+  const state = makeState({ voteEndsAt: Date.now() - 1000 });
+  mockApi(state, "admin");
+  const data = routes["/api/admin/data"] as { judgeScores: unknown[] };
+  routes["/api/admin/voting/publish"] = { ...state.settings, resultsPublished: true };
+  renderPage(<Admin />);
+
+  // A missing score blocks the confirmation.
+  await screen.findByText(/1 score is missing/);
+  await user.click(screen.getByRole("button", { name: "Publish results" }));
+  let dialog = within(await screen.findByRole("alertdialog"));
+  expect(dialog.getByText(/Every judge has to score every team first/)).toBeTruthy();
+  expect((dialog.getByRole("button", { name: "Publish results" }) as HTMLButtonElement).disabled).toBe(true);
+  await user.click(dialog.getByRole("button", { name: "Cancel" }));
+
+  cleanup();
+  data.judgeScores.push({ judgeId: 2, teamId: 2, pitch: 20, demo: 30, impact: 30 });
+  renderPage(<Admin />);
+  await screen.findByText("Every judge has scored every team.");
+  await user.click(screen.getByRole("button", { name: "Publish results" }));
+  dialog = within(await screen.findByRole("alertdialog"));
+  const rows = dialog.getAllByRole("row").map((row) => row.textContent);
+  expect(rows[1]).toContain("1. Team Bravo");
+  expect(rows[1]).toContain("22 + 36 + 32");
+  expect(rows[1]).toContain("20 + 30 + 30");
+  expect(rows[1]).toContain("4.257 votes");
+  expect(rows[1]).toContain("85.0");
+  expect(rows[2]).toContain("2. Team Alpha");
+  expect(calls.some((call) => call.method === "POST")).toBe(false);
+
+  await user.click(dialog.getByRole("button", { name: "Publish results" }));
+  await waitFor(() =>
+    expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/voting/publish")).toBe(true),
+  );
+});
+
 it("admin page shows controls and every tab renders", async () => {
   const user = userEvent.setup();
   mockApi(makeState({ voteEndsAt: Date.now() - 1000 }), "admin");
   renderPage(<Admin />);
   expect(await screen.findByText("Hackathon timer")).toBeTruthy();
-  expect(await screen.findByText("4.25 / 5")).toBeTruthy();
+  expect(await screen.findByText("85.0 / 100")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Publish results" })).toBeTruthy();
+  expect(screen.getByText("22 + 36 + 32")).toBeTruthy();
+  expect(screen.getByText(/1 score is missing/)).toBeTruthy();
 
   await user.click(screen.getByRole("tab", { name: "Teams" }));
   expect(await screen.findByRole("button", { name: "Add team" })).toBeTruthy();
@@ -293,6 +396,7 @@ it("admin page shows controls and every tab renders", async () => {
   await user.keyboard("{Escape}");
 
   for (const [tab, text] of [
+    ["Judges", "Only the judges listed here can sign in at /judge, by typing their username. Removing a judge deletes their scores."],
     ["Topics", "Quality Education"],
     ["Schedule", "Kickoff"],
     ["Resources & prompts", "Pitch deck template"],

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import Admin from "@/pages/Admin";
+import Judge from "@/pages/Judge";
 import Participant from "@/pages/Participant";
 import Privacy from "@/pages/Privacy";
 import Viewer from "@/pages/Viewer";
@@ -21,6 +22,7 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<Viewer />} />
           <Route path="/participant" element={<Participant />} />
+          <Route path="/judge" element={<Judge />} />
           <Route path="/vote" element={<Vote />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/privacy" element={<Privacy />} />
