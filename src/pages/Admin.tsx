@@ -14,8 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { api, errorMessage, formatBytes, formatDuration, useEventState, useMe, useNow, type ClientState } from "@/lib/api";
 import {
+  AUDIENCE_MAX_RATING,
   getPhase,
+  JUDGE_CRITERIA,
+  JUDGE_MAX_SCORE,
+  judgeTotal,
   type AdminTeam,
+  type Judge,
+  type JudgeScore,
   type Material,
   type Milestone,
   type Prompt,
@@ -34,6 +40,8 @@ interface AdminData {
   tools: Tool[];
   uploads: Upload[];
   results: TeamResult[];
+  judges: Judge[];
+  judgeScores: JudgeScore[];
 }
 
 const sortField: EditorField = { key: "sort", label: "Order", type: "number" };
@@ -83,6 +91,7 @@ function Dashboard({ state }: { state: ClientState }) {
         <TabsList className="flex-wrap">
           <TabsTrigger value="control">Control</TabsTrigger>
           <TabsTrigger value="teams">Teams</TabsTrigger>
+          <TabsTrigger value="judges">Judges</TabsTrigger>
           <TabsTrigger value="topics">Topics</TabsTrigger>
           <TabsTrigger value="schedule">Schedule</TabsTrigger>
           <TabsTrigger value="content">Resources & prompts</TabsTrigger>
@@ -91,7 +100,14 @@ function Dashboard({ state }: { state: ClientState }) {
         </TabsList>
 
         <TabsContent value="control" className="flex flex-col gap-6">
-          <Control state={state} now={now} results={admin.data?.results ?? []} />
+          <Control
+            state={state}
+            now={now}
+            results={admin.data?.results ?? []}
+            judges={admin.data?.judges ?? []}
+            scores={admin.data?.judgeScores ?? []}
+          />
+          <JudgeScores state={state} judges={admin.data?.judges ?? []} scores={admin.data?.judgeScores ?? []} />
         </TabsContent>
         <TabsContent value="teams">
           <ResourceEditor
@@ -101,6 +117,16 @@ function Dashboard({ state }: { state: ClientState }) {
             singular="team"
             items={(admin.data?.teams ?? []) as never}
             fields={teamFields}
+          />
+        </TabsContent>
+        <TabsContent value="judges">
+          <ResourceEditor
+            resource="judges"
+            title="Judges"
+            description="Only the judges listed here can sign in at /judge, by typing their username. Removing a judge deletes their scores."
+            singular="judge"
+            items={(admin.data?.judges ?? []) as never}
+            fields={[{ key: "name", label: "Username", type: "text" }, sortField]}
           />
         </TabsContent>
         <TabsContent value="topics">
@@ -191,7 +217,19 @@ function Dashboard({ state }: { state: ClientState }) {
   );
 }
 
-function Control({ state, now, results }: { state: ClientState; now: number; results: TeamResult[] }) {
+function Control({
+  state,
+  now,
+  results,
+  judges,
+  scores,
+}: {
+  state: ClientState;
+  now: number;
+  results: TeamResult[];
+  judges: Judge[];
+  scores: JudgeScore[];
+}) {
   const queryClient = useQueryClient();
   const { settings } = state;
   const phase = getPhase(settings, now);
@@ -273,9 +311,17 @@ function Control({ state, now, results }: { state: ClientState; now: number; res
                     Hide results
                   </Button>
                 ) : (
-                  <Button disabled={action.isPending} onClick={() => action.mutate("voting/publish")}>
-                    Publish results
-                  </Button>
+                  <ConfirmButton
+                    title="Publish these results?"
+                    description="Check every score below. Once published, everyone sees the ranking and judges can no longer change their scores."
+                    confirmLabel="Publish results"
+                    onConfirm={() => action.mutate("voting/publish")}
+                    details={<PublishReview state={state} results={results} judges={judges} scores={scores} />}
+                    confirmDisabled={judges.length === 0 || scores.length < judges.length * state.teams.length}
+                    className="data-[size=default]:sm:max-w-3xl"
+                  >
+                    <Button disabled={action.isPending}>Publish results</Button>
+                  </ConfirmButton>
                 ))}
               <ConfirmButton
                 title="Delete all votes?"
@@ -306,11 +352,11 @@ function Control({ state, now, results }: { state: ClientState; now: number; res
 
       <Section
         title="Participant data"
-        description="Once the event is over, erase member names, each team's goals and checklist, and every uploaded file. Team names and scores stay."
+        description="Once the event is over, erase member names, judge names, each team's goals and checklist, and every uploaded file. Team names and scores stay."
       >
         <ConfirmButton
           title="Delete all participant data?"
-          description="Member names, chosen goals, checklist progress, and all uploaded decks and videos are erased for every team. Download any files you still need first. This cannot be undone."
+          description="Member names, judge names, chosen goals, checklist progress, and all uploaded decks and videos are erased for every team. Download any files you still need first. This cannot be undone."
           confirmLabel="Delete participant data"
           onConfirm={() => purge.mutate()}
         >
@@ -320,6 +366,155 @@ function Control({ state, now, results }: { state: ClientState; now: number; res
         </ConfirmButton>
       </Section>
     </>
+  );
+}
+
+/** Everything that goes into the ranking, in the order it will be published. */
+function PublishReview({
+  state,
+  results,
+  judges,
+  scores,
+}: {
+  state: ClientState;
+  results: TeamResult[];
+  judges: Judge[];
+  scores: JudgeScore[];
+}) {
+  const rows = state.teams
+    .map((team) => ({ team, result: results.find((entry) => entry.teamId === team.id) }))
+    .sort((a, b) => (b.result?.final ?? 0) - (a.result?.final ?? 0));
+  const missing = judges.length * state.teams.length - scores.length;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="max-h-[50vh] overflow-y-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Team</TableHead>
+              {judges.map((judge, index) => (
+                <TableHead key={judge.id}>{judge.name || `Judge ${index + 1}`}</TableHead>
+              ))}
+              <TableHead>Judges / {JUDGE_MAX_SCORE}</TableHead>
+              <TableHead>Audience / {AUDIENCE_MAX_RATING}</TableHead>
+              <TableHead>Final / 100</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map(({ team, result }, index) => (
+              <TableRow key={team.id}>
+                <TableCell className="font-medium">
+                  {index + 1}. {team.name}
+                </TableCell>
+                {judges.map((judge) => {
+                  const entry = scores.find((score) => score.judgeId === judge.id && score.teamId === team.id);
+                  return (
+                    <TableCell key={judge.id} className="font-mono tabular-nums">
+                      {entry ? (
+                        <>
+                          {judgeTotal(entry)}
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {JUDGE_CRITERIA.map((criterion) => entry[criterion.key]).join(" + ")}
+                          </span>
+                        </>
+                      ) : (
+                        "–"
+                      )}
+                    </TableCell>
+                  );
+                })}
+                <TableCell className="font-mono tabular-nums">
+                  {result?.judgeAverage == null ? "–" : result.judgeAverage.toFixed(1)}
+                </TableCell>
+                <TableCell className="font-mono tabular-nums">
+                  {result?.audienceAverage == null ? (
+                    "–"
+                  ) : (
+                    <>
+                      {result.audienceAverage.toFixed(2)}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {result.audienceCount} {result.audienceCount === 1 ? "vote" : "votes"}
+                      </span>
+                    </>
+                  )}
+                </TableCell>
+                <TableCell className="font-mono font-semibold tabular-nums">{(result?.final ?? 0).toFixed(1)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      {judges.length === 0 ? (
+        <p className="text-sm text-destructive">Add at least one judge before publishing.</p>
+      ) : (
+        missing > 0 && (
+          <p className="text-sm text-destructive">
+            {missing} {missing === 1 ? "score is" : "scores are"} missing. Every judge has to score every team first.
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
+function JudgeScores({ state, judges, scores }: { state: ClientState; judges: Judge[]; scores: JudgeScore[] }) {
+  const { teams } = state;
+  const missing = judges.length * teams.length - scores.length;
+  const criteria = JUDGE_CRITERIA.map((criterion) => `${criterion.label} ${criterion.max}`).join(", ");
+
+  return (
+    <Section
+      title="Judge scores"
+      description={`Judges sign in at ${window.location.origin}/judge and score each team at any time until results are published. ${criteria}.`}
+    >
+      {judges.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Add judges under the Judges tab.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Team</TableHead>
+                {judges.map((judge, index) => (
+                  // Names are blank once participant data is deleted.
+                  <TableHead key={judge.id}>{judge.name || `Judge ${index + 1}`}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {teams.map((team) => (
+                <TableRow key={team.id}>
+                  <TableCell className="font-medium">{team.name}</TableCell>
+                  {judges.map((judge) => {
+                    const entry = scores.find((score) => score.judgeId === judge.id && score.teamId === team.id);
+                    return (
+                      <TableCell key={judge.id} className="font-mono tabular-nums">
+                        {entry ? (
+                          <>
+                            {judgeTotal(entry)}
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {JUDGE_CRITERIA.map((criterion) => entry[criterion.key]).join(" + ")}
+                            </span>
+                          </>
+                        ) : (
+                          "–"
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <p className="text-sm text-muted-foreground">
+            {missing > 0
+              ? `${missing} ${missing === 1 ? "score is" : "scores are"} missing. Results can be published once every judge has scored every team.`
+              : "Every judge has scored every team."}
+          </p>
+        </div>
+      )}
+    </Section>
   );
 }
 

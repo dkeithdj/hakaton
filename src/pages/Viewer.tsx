@@ -5,6 +5,7 @@ import {
   FullPageMessage,
   HackTimer,
   PageShell,
+  RESULTS_NOTE,
   ResultsList,
   ScheduleList,
   Section,
@@ -52,7 +53,7 @@ export default function Viewer() {
       <div className="grid items-start gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-4">
           {state.results && (
-            <Section title="Results" description={`${state.ballotCount} votes · average rating out of 5`}>
+            <Section title="Results" description={`${RESULTS_NOTE} · ${state.ballotCount} votes`}>
               <ResultsList teams={teams} results={state.results} />
             </Section>
           )}

@@ -59,6 +59,24 @@ async function teamClient(teamId: number, name: string) {
   return client;
 }
 
+/** Splits a total out of 100 across the criteria in their 25/40/35 proportions. */
+function points(total: number) {
+  return { pitch: total * 0.25, demo: total * 0.4, impact: total * 0.35 };
+}
+
+/** Adds the judge as the admin would, signs them in, and optionally scores teams with the given totals. */
+async function judgeClient(admin: Client, username: string, totals?: Record<number, number>) {
+  expect((await admin.post("/api/admin/resources/judges", { name: username })).status).toBe(201);
+  const client = new Client();
+  const login = await client.post("/api/judge/login", { username });
+  expect(login.status).toBe(200);
+  if (totals) {
+    const scores = Object.fromEntries(Object.entries(totals).map(([teamId, total]) => [teamId, points(total)]));
+    expect((await client.put("/api/judge/scores", { scores })).status).toBe(200);
+  }
+  return client;
+}
+
 function ratingsFor(ids: number[], rating: number) {
   return { ratings: Object.fromEntries(ids.map((id) => [id, rating])) };
 }
@@ -69,7 +87,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await env.DB.batch(
-    ["ratings", "ballots", "uploads", "teams", "topics", "materials", "settings"].map((table) =>
+    ["judge_scores", "judges", "ratings", "ballots", "uploads", "teams", "topics", "materials", "settings"].map((table) =>
       env.DB.prepare(`DELETE FROM ${table}`),
     ),
   );
@@ -178,7 +196,7 @@ describe("auth", () => {
 });
 
 describe("participant data", () => {
-  it("erases member names, team work, and uploads, leaving team names and scores", async () => {
+  it("erases member names, judge names, team work, and uploads, leaving team names and scores", async () => {
     const admin = await adminClient();
     const created = await admin.post("/api/admin/resources/teams", { name: "A", members: ["Ann", "Bo"], password: "pass-A" });
     const teamId: number = created.body.id;
@@ -197,6 +215,7 @@ describe("participant data", () => {
 
     await admin.post("/api/admin/voting/open");
     await new Client().post("/api/vote", ratingsFor([teamId], 4));
+    const judge = await judgeClient(admin, "Judge Ana", { [teamId]: 90 });
 
     expect((await team.request("DELETE", "/api/admin/participant-data")).status).toBe(401);
     expect((await admin.get("/api/admin/data")).body.uploads).toHaveLength(1);
@@ -206,7 +225,13 @@ describe("participant data", () => {
     expect(state.teams).toEqual([{ id: teamId, name: "A", members: [], topicIds: [], progress: [], sort: 0 }]);
     const data = (await admin.get("/api/admin/data")).body;
     expect(data.uploads).toEqual([]);
-    expect(data.results).toEqual([{ teamId, average: 4, count: 1 }]);
+    expect(data.results).toEqual([
+      { teamId, final: 88, judgeAverage: 90, judgeCount: 1, audienceAverage: 4, audienceCount: 1 },
+    ]);
+    expect(data.judges).toEqual([{ id: expect.any(Number), name: "", sort: 0 }]);
+    expect((await judge.get("/api/judge")).body.judge).toBeNull();
+    expect((await judge.put("/api/judge/scores", { scores: { [teamId]: points(1) } })).status).toBe(401);
+    expect((await new Client().post("/api/judge/login", { username: "" })).status).toBe(400);
     expect(await env.UPLOADS.get(key)).toBeNull();
     expect((await env.UPLOADS.list({ prefix: "teams/" })).objects).toEqual([]);
   });
@@ -272,7 +297,9 @@ describe("voting", () => {
     expect((await voter.get("/api/vote/status")).body.hasVoted).toBe(true);
 
     const results = (await admin.get("/api/admin/data")).body.results;
-    expect(results).toEqual(ids.map((teamId) => ({ teamId, average: 5, count: 1 })));
+    expect(results).toEqual(
+      ids.map((teamId) => ({ teamId, final: 20, judgeAverage: null, judgeCount: 0, audienceAverage: 5, audienceCount: 1 })),
+    );
   });
 
   it("shows only the ballot count until results are published", async () => {
@@ -281,6 +308,7 @@ describe("voting", () => {
     await admin.post("/api/admin/voting/open");
     await new Client().post("/api/vote", { ratings: { [a]: 5, [b]: 2 } });
     await new Client().post("/api/vote", { ratings: { [a]: 4, [b]: 3 } });
+    await judgeClient(admin, "Ana", { [a]: 80, [b]: 50 });
 
     const during = await new Client().get("/api/state");
     expect(during.body.ballotCount).toBe(2);
@@ -293,8 +321,8 @@ describe("voting", () => {
     expect((await admin.post("/api/admin/voting/publish")).status).toBe(200);
     const after = await new Client().get("/api/state");
     expect(after.body.results).toEqual([
-      { teamId: a, average: 4.5, count: 2 },
-      { teamId: b, average: 2.5, count: 2 },
+      { teamId: a, final: expect.closeTo(82), judgeAverage: 80, judgeCount: 1, audienceAverage: 4.5, audienceCount: 2 },
+      { teamId: b, final: expect.closeTo(50), judgeAverage: 50, judgeCount: 1, audienceAverage: 2.5, audienceCount: 2 },
     ]);
   });
 
@@ -327,6 +355,119 @@ describe("voting", () => {
     expect((await new Client().get("/api/state")).body.ballotCount).toBe(0);
     await admin.post("/api/admin/voting/open");
     expect((await voter.post("/api/vote", ratingsFor(ids, 4))).status).toBe(200);
+  });
+});
+
+describe("judging", () => {
+  it("signs in only judges the admin added, and takes scores without voting being open", async () => {
+    const admin = await adminClient();
+    const [a, b] = await createTeams(admin, ["A", "B"]);
+
+    const stranger = new Client();
+    expect((await stranger.get("/api/judge")).body).toEqual({ judge: null, scores: {} });
+    expect((await stranger.put("/api/judge/scores", { scores: { [a]: points(50) } })).status).toBe(401);
+    expect((await stranger.post("/api/judge/login", { username: "Ana" })).status).toBe(401);
+    expect((await stranger.post("/api/judge/login", { username: "   " })).status).toBe(400);
+    expect((await stranger.post("/api/admin/resources/judges", { name: "Ana" })).status).toBe(401);
+    expect((await admin.get("/api/admin/data")).body.judges).toEqual([]);
+
+    const judge = await judgeClient(admin, "Ana");
+    expect((await admin.post("/api/admin/resources/judges", { name: "ana" })).status).toBe(409);
+
+    const full = { pitch: 25, demo: 40, impact: 35 };
+    for (const invalid of [
+      { ...full, pitch: 26 },
+      { ...full, demo: 41 },
+      { ...full, impact: 36 },
+      { ...full, pitch: -1 },
+      { ...full, demo: "40" },
+      { pitch: 20, demo: 30 },
+      90,
+    ]) {
+      expect((await judge.put("/api/judge/scores", { scores: { [a]: invalid } })).status).toBe(400);
+    }
+    expect((await judge.put("/api/judge/scores", { scores: { 9999: full } })).status).toBe(400);
+
+    const scores = { [a]: { pitch: 20.5, demo: 32, impact: 35 }, [b]: { pitch: 10, demo: 20, impact: 30 } };
+    const saved = await judge.put("/api/judge/scores", { scores });
+    expect(saved.body.scores).toEqual(scores);
+    expect((await admin.get("/api/admin/data")).body.results.map((result: any) => result.judgeAverage)).toEqual([87.5, 60]);
+
+    // The same username on another device, in any letter case, is the same judge.
+    const again = await new Client().post("/api/judge/login", { username: "  ana " });
+    expect(again.body).toEqual({ judge: saved.body.judge, scores });
+
+    const cleared = await judge.put("/api/judge/scores", { scores: { [b]: null } });
+    expect(cleared.body.scores).toEqual({ [a]: scores[a] });
+  });
+
+  it("weights the judge average at 80% and the audience at 20% for any number of judges", async () => {
+    const admin = await adminClient();
+    const [a, b] = await createTeams(admin, ["A", "B"]);
+    await admin.post("/api/admin/voting/open");
+    await new Client().post("/api/vote", { ratings: { [a]: 5, [b]: 3 } });
+    await judgeClient(admin, "One", { [a]: 60, [b]: 90 });
+    await judgeClient(admin, "Two", { [a]: 80, [b]: 100 });
+
+    const results = async () => (await admin.get("/api/admin/data")).body.results;
+    expect(await results()).toEqual([
+      { teamId: a, final: expect.closeTo(76), judgeAverage: 70, judgeCount: 2, audienceAverage: 5, audienceCount: 1 },
+      { teamId: b, final: expect.closeTo(88), judgeAverage: 95, judgeCount: 2, audienceAverage: 3, audienceCount: 1 },
+    ]);
+
+    await judgeClient(admin, "Three", { [a]: 100, [b]: 50 });
+    expect(await results()).toEqual([
+      { teamId: a, final: expect.closeTo(84), judgeAverage: 80, judgeCount: 3, audienceAverage: 5, audienceCount: 1 },
+      { teamId: b, final: expect.closeTo(76), judgeAverage: 80, judgeCount: 3, audienceAverage: 3, audienceCount: 1 },
+    ]);
+  });
+
+  it("publishes only once every judge has scored every team, then locks the scores", async () => {
+    const admin = await adminClient();
+    const [a, b] = await createTeams(admin, ["A", "B"]);
+    await admin.post("/api/admin/voting/open");
+    await admin.post("/api/admin/voting/close");
+
+    const none = await admin.post("/api/admin/voting/publish");
+    expect(none).toEqual({ status: 409, body: { error: "Add at least one judge before publishing" } });
+
+    const judge = await judgeClient(admin, "Ana", { [a]: 80 });
+    const partial = await admin.post("/api/admin/voting/publish");
+    expect(partial).toEqual({ status: 409, body: { error: "1 judge score is missing" } });
+
+    // Judging does not depend on the voting window, so it still works after voting has closed.
+    expect((await judge.put("/api/judge/scores", { scores: { [b]: points(40) } })).status).toBe(200);
+    expect((await admin.post("/api/admin/voting/publish")).status).toBe(200);
+    expect((await judge.put("/api/judge/scores", { scores: { [b]: points(100) } })).status).toBe(403);
+
+    await admin.post("/api/admin/voting/unpublish");
+    expect((await judge.put("/api/judge/scores", { scores: { [b]: points(100) } })).status).toBe(200);
+  });
+
+  it("lets only the admin remove a judge, which drops that judge's scores", async () => {
+    const admin = await adminClient();
+    const [a] = await createTeams(admin, ["A"]);
+    const stray = await judgeClient(admin, "Stray", { [a]: 0 });
+    await judgeClient(admin, "Ana", { [a]: 90 });
+    const strayId: number = (await stray.get("/api/judge")).body.judge.id;
+
+    expect((await stray.request("DELETE", `/api/admin/resources/judges/${strayId}`)).status).toBe(401);
+    expect((await admin.request("DELETE", `/api/admin/resources/judges/${strayId}`)).status).toBe(200);
+
+    const data = (await admin.get("/api/admin/data")).body;
+    expect(data.judges.map((judge: { name: string }) => judge.name)).toEqual(["Ana"]);
+    expect(data.judgeScores).toEqual([{ judgeId: expect.any(Number), teamId: a, ...points(90) }]);
+    expect(data.results[0].judgeAverage).toBe(90);
+    expect((await stray.get("/api/judge")).body.judge).toBeNull();
+  });
+
+  it("keeps judges and their scores out of the public state", async () => {
+    const admin = await adminClient();
+    const [a] = await createTeams(admin, ["A"]);
+    await judgeClient(admin, "Secret Judge", { [a]: 42 });
+    const state = await new Client().get("/api/state");
+    expect(state.body.results).toBeNull();
+    expect(JSON.stringify(state.body)).not.toContain("Secret Judge");
   });
 });
 

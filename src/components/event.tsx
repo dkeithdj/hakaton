@@ -6,7 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration, type ClientState } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { getPhase, type Phase, type PublicSettings, type ScheduleItem, type Team, type TeamResult, type Topic } from "../../shared/types";
+import {
+  AUDIENCE_MAX_RATING,
+  AUDIENCE_WEIGHT,
+  JUDGE_MAX_SCORE,
+  JUDGE_WEIGHT,
+  getPhase,
+  type Phase,
+  type PublicSettings,
+  type ScheduleItem,
+  type Team,
+  type TeamResult,
+  type Topic,
+} from "../../shared/types";
 
 const PHASE_LABELS: Record<Phase, string> = {
   upcoming: "Starting soon",
@@ -183,10 +195,12 @@ export function ScheduleList({ schedule }: { schedule: ScheduleItem[] }) {
   );
 }
 
+export const RESULTS_NOTE = `${JUDGE_WEIGHT * 100}% judges, ${AUDIENCE_WEIGHT * 100}% audience vote`;
+
 export function ResultsList({ teams, results }: { teams: Team[]; results: TeamResult[] }) {
   const rows = teams
     .map((team) => ({ team, result: results.find((entry) => entry.teamId === team.id) }))
-    .sort((a, b) => (b.result?.average ?? 0) - (a.result?.average ?? 0));
+    .sort((a, b) => (b.result?.final ?? 0) - (a.result?.final ?? 0));
   return (
     <ol className="flex flex-col gap-3">
       {rows.map(({ team, result }, index) => (
@@ -195,14 +209,19 @@ export function ResultsList({ teams, results }: { teams: Team[]; results: TeamRe
             <span className={cn("font-medium", index === 0 && result && "text-lg")}>
               {index + 1}. {team.name}
             </span>
-            <span className="font-mono text-sm tabular-nums">
-              {result ? `${result.average.toFixed(2)} / 5` : "no ratings"}
-              <span className="ml-2 text-muted-foreground">{result?.count ?? 0} votes</span>
-            </span>
+            <span className="font-mono text-sm tabular-nums">{(result?.final ?? 0).toFixed(1)} / 100</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${((result?.average ?? 0) / 5) * 100}%` }} />
+            <div className="h-full rounded-full bg-primary" style={{ width: `${result?.final ?? 0}%` }} />
           </div>
+          <p className="font-mono text-xs text-muted-foreground tabular-nums">
+            Judges {result?.judgeAverage == null ? "no scores" : `${result.judgeAverage.toFixed(1)} / ${JUDGE_MAX_SCORE}`}
+            {" · "}
+            Audience{" "}
+            {result?.audienceAverage == null
+              ? "no ratings"
+              : `${result.audienceAverage.toFixed(2)} / ${AUDIENCE_MAX_RATING} (${result.audienceCount} ${result.audienceCount === 1 ? "vote" : "votes"})`}
+          </p>
         </li>
       ))}
     </ol>
