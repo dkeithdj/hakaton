@@ -1,33 +1,32 @@
 # Graph Report - hakaton  (2026-10-13)
 
 ## Corpus Check
-- 60 files · ~35,148 words
+- 60 files · ~35,990 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 4 file(s) not represented in the graph (top: .example 1, (none) 1, .css 1)
 
 ## Summary
-- 501 nodes · 1097 edges · 28 communities (18 shown, 10 thin omitted)
+- 504 nodes · 1104 edges · 27 communities (17 shown, 10 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5edf468c`
+- Built from commit: `89a548b1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- event.tsx
+- Judge.tsx
+- ResourceEditor.tsx
 - Participant.tsx
-- resources.ts
-- Admin.tsx
+- index.ts
 - package.json
 - components.json
 - 0001_init.sql
-- Hakaton
 - devDependencies
 - dependencies
 - compilerOptions
-- Judge.tsx
+- Admin.tsx
 - compilerOptions
 - Hakaton
 - api.test.ts
@@ -39,13 +38,13 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `react` - 26 edges
-2. `api()` - 24 edges
+2. `api()` - 25 edges
 3. `errorMessage()` - 19 edges
 4. `cn` - 17 edges
 5. `scripts` - 15 edges
 6. `useEventState()` - 14 edges
-7. `radix-ui` - 13 edges
-8. `useNow()` - 13 edges
+7. `useNow()` - 14 edges
+8. `radix-ui` - 13 edges
 9. `compilerOptions` - 13 edges
 10. `Button()` - 12 edges
 
@@ -64,23 +63,23 @@
 ## Import Cycles
 - None detected.
 
-## Communities (28 total, 10 thin omitted)
+## Communities (27 total, 10 thin omitted)
 
-### Community 0 - "event.tsx"
+### Community 0 - "Judge.tsx"
+Cohesion: 0.07
+Nodes (61): Layout, react-router-dom, sonner, @tanstack/react-query, @testing-library/react, @testing-library/user-event, EventState, getPhase() (+53 more)
+
+### Community 1 - "ResourceEditor.tsx"
+Cohesion: 0.07
+Nodes (37): cn, lucide-react, radix-ui, react, PRESETS, fromFormValue(), Item, ResourceEditor() (+29 more)
+
+### Community 2 - "Participant.tsx"
 Cohesion: 0.06
-Nodes (57): Layout, @tanstack/react-query, @testing-library/react, @testing-library/user-event, AUDIENCE_WEIGHT, EventState, getPhase(), JUDGE_WEIGHT (+49 more)
+Nodes (37): class-variance-authority, AUDIENCE_WEIGHT, JUDGE_WEIGHT, Phase, ScheduleItem, EventLogo(), hackRemainingMs(), HackTimer() (+29 more)
 
-### Community 1 - "Participant.tsx"
-Cohesion: 0.06
-Nodes (46): class-variance-authority, cn, lucide-react, radix-ui, react, sonner, beep(), PitchTimer() (+38 more)
-
-### Community 2 - "resources.ts"
-Cohesion: 0.19
-Nodes (18): hono, assignments(), bad(), createResource(), deleteResource(), Field, FieldType, fromRow() (+10 more)
-
-### Community 3 - "Admin.tsx"
-Cohesion: 0.06
-Nodes (64): Architecture, AdminTeam, AUDIENCE_MAX_RATING, CriteriaScores, finalScore(), Judge, JUDGE_CRITERIA, JUDGE_MAX_SCORE (+56 more)
+### Community 3 - "index.ts"
+Cohesion: 0.05
+Nodes (55): Architecture, Commands, Conventions, graphify, Hakaton, hono, finalScore(), JudgeSession (+47 more)
 
 ### Community 4 - "package.json"
 Cohesion: 0.07
@@ -94,10 +93,6 @@ Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent 
 Cohesion: 0.20
 Nodes (13): ballots, prompts, ratings, schedule_items, settings, teams, tools, topics (+5 more)
 
-### Community 7 - "Hakaton"
-Cohesion: 0.40
-Nodes (4): Commands, Conventions, graphify, Hakaton
-
 ### Community 8 - "devDependencies"
 Cohesion: 0.12
 Nodes (16): devDependencies, @cloudflare/vite-plugin, @cloudflare/vitest-pool-workers, jsdom, tailwindcss, @tailwindcss/vite, @testing-library/react, @testing-library/user-event (+8 more)
@@ -110,9 +105,9 @@ Nodes (15): dependencies, class-variance-authority, cn, @fontsource-variable/gei
 Cohesion: 0.13
 Nodes (14): compilerOptions, jsx, lib, module, moduleResolution, noEmit, paths, skipLibCheck (+6 more)
 
-### Community 11 - "Judge.tsx"
-Cohesion: 0.09
-Nodes (30): react-router-dom, JudgeCriterion, Team, LoginCard(), uploadFile(), UploadSlot(), handleFile(), Card() (+22 more)
+### Community 11 - "Admin.tsx"
+Cohesion: 0.12
+Nodes (31): AdminTeam, AUDIENCE_MAX_RATING, CriteriaScores, Judge, JUDGE_CRITERIA, JUDGE_MAX_SCORE, JudgeCriterion, JudgeScore (+23 more)
 
 ### Community 12 - "compilerOptions"
 Cohesion: 0.15
@@ -140,23 +135,23 @@ Nodes (15): scripts, build, ci:build, ci:deploy, db:migrate:local, db:migrate:re
 
 ## Knowledge Gaps
 - **152 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+147 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 207 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 208 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `react` connect `Participant.tsx` to `event.tsx`, `Admin.tsx`, `package.json`, `Judge.tsx`, `alert-dialog.tsx`?**
-  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Why does `react` connect `ResourceEditor.tsx` to `Judge.tsx`, `Participant.tsx`, `package.json`, `Admin.tsx`, `alert-dialog.tsx`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
 - **Why does `devDependencies` connect `devDependencies` to `package.json`?**
   _High betweenness centrality (0.047) - this node is a cross-community bridge._
 - **Why does `scripts` connect `scripts` to `package.json`?**
   _High betweenness centrality (0.044) - this node is a cross-community bridge._
 - **What connects `$schema`, `style`, `rsc` to the rest of the system?**
   _152 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `event.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.061052631578947365 - nodes in this community are weakly interconnected._
+- **Should `Judge.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.06593406593406594 - nodes in this community are weakly interconnected._
+- **Should `ResourceEditor.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.06526806526806526 - nodes in this community are weakly interconnected._
 - **Should `Participant.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.056049213943950786 - nodes in this community are weakly interconnected._
-- **Should `Admin.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.055135135135135134 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05805515239477504 - nodes in this community are weakly interconnected._

@@ -262,6 +262,29 @@ function Control({
 
   return (
     <>
+      <Section
+        title="Participant access"
+        description="Teams can sign in at /participant and use their workspace only while this is open."
+      >
+        <div className="flex flex-wrap items-center gap-6">
+          <span className="font-mono text-3xl">{settings.participantAccess ? "Open" : "Closed"}</span>
+          {settings.participantAccess ? (
+            <ConfirmButton
+              title="Close participant access?"
+              description="Teams are locked out of their workspace until you open it again. They stay signed in."
+              confirmLabel="Close access"
+              onConfirm={() => action.mutate("participants/close")}
+            >
+              <Button variant="outline">Close access</Button>
+            </ConfirmButton>
+          ) : (
+            <Button disabled={action.isPending} onClick={() => action.mutate("participants/open")}>
+              Open access
+            </Button>
+          )}
+        </div>
+      </Section>
+
       <Section title="Hackathon timer" description={`Duration: ${settings.hackDurationMin} minutes. Change it under Settings.`}>
         <div className="flex flex-wrap items-center gap-6">
           <HackTimer settings={settings} now={now} className="text-5xl" />

@@ -91,6 +91,8 @@ beforeEach(async () => {
       env.DB.prepare(`DELETE FROM ${table}`),
     ),
   );
+  // Participant access starts closed; most tests need teams signed in.
+  await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('participantAccess', 'true')").run();
 });
 
 describe("auth", () => {
@@ -99,6 +101,39 @@ describe("auth", () => {
     expect((await client.post("/api/login", { role: "admin", password: "nope" })).status).toBe(401);
     expect((await client.get("/api/admin/data")).status).toBe(401);
     expect((await client.get("/api/participant/content")).status).toBe(401);
+  });
+
+  it("keeps teams out until the admin opens participant access", async () => {
+    await env.DB.prepare("DELETE FROM settings").run();
+    const admin = await adminClient();
+    const [a] = await createTeams(admin, ["A"]);
+    const login = { role: "participant", teamId: a, password: "pass-A" };
+    const client = new Client();
+    expect((await client.get("/api/state")).body.settings.participantAccess).toBe(false);
+    // The toolbox is public, so teams can get their accounts ready while they wait.
+    const tool = { name: "Gemini", description: "", url: "https://gemini.google.com", vendor: "Google", color: "#4285F4" };
+    expect((await admin.post("/api/admin/resources/tools", tool)).status).toBe(201);
+    expect((await client.get("/api/tools")).body).toContainEqual(expect.objectContaining(tool));
+    expect((await client.get("/api/participant/content")).status).toBe(401);
+    expect(await client.post("/api/login", login)).toEqual({
+      status: 403,
+      body: { error: "Participant access is not open yet" },
+    });
+    // Admins can still preview the workspace.
+    expect((await admin.get("/api/participant/content")).status).toBe(200);
+
+    expect((await client.post("/api/admin/participants/open")).status).toBe(401);
+    expect((await admin.post("/api/admin/participants/open")).body.participantAccess).toBe(true);
+    expect((await client.post("/api/login", login)).status).toBe(200);
+    expect((await client.get("/api/participant/content")).status).toBe(200);
+
+    // Closing locks signed-in teams out without ending their session.
+    expect((await admin.post("/api/admin/participants/close")).body.participantAccess).toBe(false);
+    expect((await client.get("/api/participant/content")).status).toBe(403);
+    expect((await client.put(`/api/participant/teams/${a}`, { progress: [0] })).status).toBe(403);
+    await admin.post("/api/admin/participants/open");
+    expect((await client.get("/api/participant/content")).status).toBe(200);
+    expect((await admin.post("/api/admin/participants/nope")).status).toBe(404);
   });
 
   it("signs a team in only with that team's own password", async () => {

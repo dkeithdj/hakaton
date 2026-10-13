@@ -32,6 +32,10 @@ export default function Participant() {
   const me = useMe();
   const { data: state } = useEventState(5000);
   if (me.isPending || !state) return <FullPageMessage>Loading…</FullPageMessage>;
+  // Admins can preview the workspace before it opens to teams.
+  if (!state.settings.participantAccess && me.data?.role !== "admin") {
+    return <Preview state={state} />;
+  }
   if (!me.data?.role) {
     return (
       <LoginCard
@@ -43,6 +47,28 @@ export default function Participant() {
     );
   }
   return <Workspace state={state} me={me.data} />;
+}
+
+/** What teams see before the admin opens access: enough to get accounts ready for the tools they may use. */
+function Preview({ state }: { state: ClientState }) {
+  const now = useNow(state.clockOffset);
+  const tools = useQuery({ queryKey: ["tools"], queryFn: () => api<Tool[]>("/api/tools") });
+
+  return (
+    <PageShell state={state} now={now}>
+      <section className="rounded-2xl bg-subay px-6 py-4 text-white">
+        <p className="font-heading text-xl font-semibold">The workspace is not open yet</p>
+        <p className="text-sm text-white/85">
+          The organizers will open team sign-in when the event starts. Until then, read the guidelines and sign up for
+          the tools you plan to use.
+        </p>
+      </section>
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <Guidelines text={state.settings.guidelines} />
+        <Toolbox tools={tools.data ?? []} />
+      </div>
+    </PageShell>
+  );
 }
 
 function Workspace({ state, me }: { state: ClientState; me: Me }) {
@@ -87,8 +113,6 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
   const done = team ? team.progress.filter((index) => index < milestones.length) : [];
   const selected = team ? topics.filter((topic) => team.topicIds.includes(topic.id)) : [];
   const tools = content.data?.tools ?? [];
-  const googleTools = tools.filter(isGoogle);
-  const otherTools = tools.filter((tool) => !isGoogle(tool));
 
   return (
     <PageShell
@@ -277,59 +301,11 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
             </Section>
           )}
 
-          {settings.guidelines && (
-            <Collapsible defaultOpen>
-              <Section
-                title="Presentation guidelines"
-                action={
-                  <CollapsibleTrigger asChild>
-                    <Button size="icon-sm" variant="ghost" aria-label="Toggle guidelines">
-                      <ChevronDownIcon />
-                    </Button>
-                  </CollapsibleTrigger>
-                }
-              >
-                <CollapsibleContent>
-                  <RichText text={settings.guidelines} className="text-sm leading-relaxed" />
-                </CollapsibleContent>
-              </Section>
-            </Collapsible>
-          )}
+          <Guidelines text={settings.guidelines} />
         </div>
 
         <div className="flex flex-col gap-4">
-          {tools.length > 0 && (
-            <Section title="Toolbox" description="Suggestions only. Most have a free tier. Use any tool you like.">
-              <div className="flex flex-col gap-3">
-                {googleTools.length > 0 && (
-                  <div className="overflow-hidden rounded-xl border-2 border-[#4285F4]/40 bg-[#4285F4]/5">
-                    <div className="h-1.5 bg-[linear-gradient(90deg,#4285F4_25%,#EA4335_25%_50%,#FBBC05_50%_75%,#34A853_75%)]" />
-                    <div className="flex flex-col gap-2 p-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-heading font-semibold">Start here: Google tools</p>
-                        <Badge className="bg-[#4285F4] text-white">Recommended first</Badge>
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {googleTools.map((tool) => (
-                          <ToolCard key={tool.id} tool={tool} featured />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {otherTools.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    {googleTools.length > 0 && <p className="text-sm font-medium text-muted-foreground">More tools</p>}
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {otherTools.map((tool) => (
-                        <ToolCard key={tool.id} tool={tool} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Section>
-          )}
+          <Toolbox tools={tools} />
 
           {content.data && content.data.materials.length > 0 && (
             <Section
@@ -409,6 +385,66 @@ function ProjectTitle({ value, onSave }: { value: string; onSave: (title: string
         onBlur={commit}
       />
     </form>
+  );
+}
+
+function Guidelines({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <Collapsible defaultOpen>
+      <Section
+        title="Presentation guidelines"
+        action={
+          <CollapsibleTrigger asChild>
+            <Button size="icon-sm" variant="ghost" aria-label="Toggle guidelines">
+              <ChevronDownIcon />
+            </Button>
+          </CollapsibleTrigger>
+        }
+      >
+        <CollapsibleContent>
+          <RichText text={text} className="text-sm leading-relaxed" />
+        </CollapsibleContent>
+      </Section>
+    </Collapsible>
+  );
+}
+
+function Toolbox({ tools }: { tools: Tool[] }) {
+  const googleTools = tools.filter(isGoogle);
+  const otherTools = tools.filter((tool) => !isGoogle(tool));
+  if (tools.length === 0) return null;
+  return (
+    <Section title="Toolbox" description="Suggestions only. Most have a free tier. Use any tool you like.">
+      <div className="flex flex-col gap-3">
+        {googleTools.length > 0 && (
+          <div className="overflow-hidden rounded-xl border-2 border-[#4285F4]/40 bg-[#4285F4]/5">
+            <div className="h-1.5 bg-[linear-gradient(90deg,#4285F4_25%,#EA4335_25%_50%,#FBBC05_50%_75%,#34A853_75%)]" />
+            <div className="flex flex-col gap-2 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-heading font-semibold">Start here: Google tools</p>
+                <Badge className="bg-[#4285F4] text-white">Recommended first</Badge>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {googleTools.map((tool) => (
+                  <ToolCard key={tool.id} tool={tool} featured />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {otherTools.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {googleTools.length > 0 && <p className="text-sm font-medium text-muted-foreground">More tools</p>}
+            <div className="grid gap-2 sm:grid-cols-2">
+              {otherTools.map((tool) => (
+                <ToolCard key={tool.id} tool={tool} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Section>
   );
 }
 
