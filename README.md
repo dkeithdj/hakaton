@@ -108,7 +108,7 @@ It **replaces every resource and prompt**, including anything edited in Admin â†
 
 ## Privacy and data deletion
 
-- The database holds team names, member names, each team's chosen goals and checklist progress, anonymous ballots, and judge usernames with their scores. Uploaded decks and videos live in R2.
+- The database holds team names, member names, each team's project title, chosen goals, and checklist progress, anonymous ballots, and judge usernames with their scores. Uploaded decks and videos live in R2.
 - The policy at `/privacy` tells participants this data is used only for the hackathon and deleted when it ends. Keep it true: after the event, open the Control tab and press **Delete participant data**.
-- That button erases member names, judge usernames, chosen goals, checklist progress, and every uploaded file for all teams. Team names, vote scores, and judge scores stay. Download any files you still need first.
+- That button erases member names, judge usernames, project titles, chosen goals, checklist progress, and every uploaded file for all teams. Team names, vote scores, and judge scores stay. Download any files you still need first.
 - D1 keeps point-in-time backups for up to 30 days, so deleted rows remain restorable by the Cloudflare account owner until those expire.

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
   FullPageMessage,
@@ -62,7 +63,7 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
   const phase = getPhase(settings, now);
 
   const updateTeam = useMutation({
-    mutationFn: (patch: Partial<Pick<Team, "topicIds" | "progress">>) =>
+    mutationFn: (patch: Partial<Pick<Team, "projectTitle" | "topicIds" | "progress">>) =>
       api<Team>(`/api/participant/teams/${team!.id}`, { method: "PUT", body: patch }),
     onSuccess: (updated) => {
       queryClient.setQueryData<ClientState>(["state"], (current) =>
@@ -136,8 +137,15 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
       </Dialog>
 
       <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded-2xl bg-subay px-6 py-3 text-white">
-        <div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           {team && <p className="font-heading text-xl font-semibold">{team.name}</p>}
+          {team && (
+            <ProjectTitle
+              key={team.id}
+              value={team.projectTitle}
+              onSave={(projectTitle, done) => updateTeam.mutate({ projectTitle }, { onSettled: done })}
+            />
+          )}
           <p className="text-sm tracking-widest text-white/85 uppercase">
             {phase === "upcoming" ? "Sprint duration" : "Sprint time remaining"}
           </p>
@@ -364,6 +372,38 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+/** Saves when the team leaves the box or presses Enter. Voters and judges see the title next to the team name. */
+function ProjectTitle({ value, onSave }: { value: string; onSave: (title: string, done: () => void) => void }) {
+  // null while not editing, so a title changed by a teammate shows up on the next poll.
+  const [draft, setDraft] = useState<string | null>(null);
+
+  function commit() {
+    if (draft === null) return;
+    if (draft.trim() === value) setDraft(null);
+    else onSave(draft.trim(), () => setDraft(null));
+  }
+
+  return (
+    <form
+      className="max-w-md"
+      onSubmit={(event) => {
+        event.preventDefault();
+        commit();
+      }}
+    >
+      <Input
+        aria-label="Project title"
+        placeholder="Add your project title"
+        maxLength={100}
+        className="border-white/40 bg-white/15 text-white placeholder:text-white/70"
+        value={draft ?? value}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+      />
+    </form>
   );
 }
 

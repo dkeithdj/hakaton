@@ -32,8 +32,8 @@ function makeState(settings: Partial<PublicSettings> = {}, extra: Partial<EventS
     serverNow: Date.now(),
     settings: { ...baseSettings, ...settings },
     teams: [
-      { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2], progress: [0], sort: 1 },
-      { id: 2, name: "Team Bravo", members: ["Cy"], topicIds: [], progress: [], sort: 2 },
+      { id: 1, name: "Team Alpha", projectTitle: "Flood Watch", members: ["Ann", "Bo"], topicIds: [2], progress: [0], sort: 1 },
+      { id: 2, name: "Team Bravo", projectTitle: "", members: ["Cy"], topicIds: [], progress: [], sort: 2 },
     ],
     topics: [
       { id: 1, title: "No Poverty", description: "End poverty.", color: "#E5243B", sort: 1 },
@@ -179,6 +179,8 @@ it("vote page submits a rating for every team", async () => {
   const submit = await screen.findByRole("button", { name: "Submit vote" });
   expect((submit as HTMLButtonElement).disabled).toBe(true);
 
+  // The project title reminds voters what each team built.
+  expect(screen.getByText("Flood Watch")).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Rate Team Alpha 4 out of 5" }));
   expect((submit as HTMLButtonElement).disabled).toBe(true);
   await user.click(screen.getByRole("button", { name: "Rate Team Bravo 5 out of 5" }));
@@ -223,6 +225,7 @@ it("judge page saves pitch, demo, and impact points for each team, with voting n
   renderPage(<Judge />);
   expect(((await screen.findByLabelText("Team Alpha demo out of 40")) as HTMLInputElement).value).toBe("24");
   expect(screen.getByText("60 / 100")).toBeTruthy();
+  expect(screen.getByText("Flood Watch")).toBeTruthy();
   expect(screen.getByText("1 of 2 scored")).toBeTruthy();
   const save = screen.getByRole("button", { name: "Save scores" }) as HTMLButtonElement;
   expect(save.disabled).toBe(true);
@@ -291,7 +294,7 @@ it("participant page opens only the signed-in team's workspace", async () => {
   expect(screen.getByText("Pitch timer")).toBeTruthy();
   expect(screen.getByText("Backup uploads")).toBeTruthy();
 
-  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2], progress: [0, 1], sort: 1 };
+  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", projectTitle: "Flood Watch", members: ["Ann", "Bo"], topicIds: [2], progress: [0, 1], sort: 1 };
   await user.click(screen.getByRole("checkbox", { name: /Build the prototype/ }));
   expect(await screen.findByText("2 of 2 complete")).toBeTruthy();
   expect(calls.find((call) => call.method === "PUT")?.body).toEqual({ progress: [0, 1] });
@@ -304,10 +307,19 @@ it("participant page opens only the signed-in team's workspace", async () => {
 
   // A team can build on more than one goal.
   expect(screen.getByRole("button", { name: "SGD 4: Quality Education" }).getAttribute("aria-pressed")).toBe("true");
-  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", members: ["Ann", "Bo"], topicIds: [2, 1], progress: [0, 1], sort: 1 };
+  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", projectTitle: "Flood Watch", members: ["Ann", "Bo"], topicIds: [2, 1], progress: [0, 1], sort: 1 };
   await user.click(screen.getByRole("button", { name: "SGD 1: No Poverty" }));
   expect(await screen.findByText("2 of 2 goals chosen")).toBeTruthy();
   expect(calls.filter((call) => call.method === "PUT").at(-1)?.body).toEqual({ topicIds: [2, 1] });
+
+  // The team names its project at the top of the workspace and can rename it.
+  const title = screen.getByLabelText("Project title") as HTMLInputElement;
+  expect(title.value).toBe("Flood Watch");
+  routes["/api/participant/teams/1"] = { id: 1, name: "Team Alpha", projectTitle: "Flood Radar", members: ["Ann", "Bo"], topicIds: [2, 1], progress: [0, 1], sort: 1 };
+  await user.clear(title);
+  await user.type(title, "Flood Radar{Enter}");
+  expect(calls.filter((call) => call.method === "PUT").at(-1)?.body).toEqual({ projectTitle: "Flood Radar" });
+  await waitFor(() => expect(title.value).toBe("Flood Radar"));
 });
 
 it("admin can open any team's workspace from the participant page", async () => {

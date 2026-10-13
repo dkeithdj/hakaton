@@ -37,6 +37,8 @@ export interface Topic {
 export interface Team {
   id: number;
   name: string;
+  /** What the team is building, set by the team. Empty until they name it. */
+  projectTitle: string;
   members: string[];
   /** The goals the team is building on. Empty until they pick at least one. */
   topicIds: number[];

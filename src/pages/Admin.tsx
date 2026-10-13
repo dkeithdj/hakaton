@@ -72,6 +72,7 @@ function Dashboard({ state }: { state: ClientState }) {
   const { topics, schedule } = state;
   const teamFields: EditorField[] = [
     { key: "name", label: "Team name", type: "text" },
+    { key: "projectTitle", label: "Project title", type: "text", placeholder: "Teams can set this themselves" },
     { key: "members", label: "Members", type: "lines", placeholder: "One member per line" },
     { key: "password", label: "Team password", type: "text", placeholder: "Leave blank to generate one" },
     sortField,
@@ -352,11 +353,11 @@ function Control({
 
       <Section
         title="Participant data"
-        description="Once the event is over, erase member names, judge names, each team's goals and checklist, and every uploaded file. Team names and scores stay."
+        description="Once the event is over, erase member names, judge names, each team's project title, goals, and checklist, and every uploaded file. Team names and scores stay."
       >
         <ConfirmButton
           title="Delete all participant data?"
-          description="Member names, judge names, chosen goals, checklist progress, and all uploaded decks and videos are erased for every team. Download any files you still need first. This cannot be undone."
+          description="Member names, judge names, project titles, chosen goals, checklist progress, and all uploaded decks and videos are erased for every team. Download any files you still need first. This cannot be undone."
           confirmLabel="Delete participant data"
           onConfirm={() => purge.mutate()}
         >

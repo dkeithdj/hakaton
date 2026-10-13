@@ -25,7 +25,7 @@ export default function Privacy() {
               it.
             </li>
             <li>
-              <strong>Your team's work.</strong> The goals your team picks, the checklist steps it ticks off, and any
+              <strong>Your team's work.</strong> The project title your team enters, the goals it picks, the checklist steps it ticks off, and any
               pitch deck or demo video it chooses to upload.
             </li>
             <li>
@@ -55,7 +55,10 @@ export default function Privacy() {
 
         <Section title="Who can see it">
           <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm">
-            <li>Team names, member names, chosen goals, and checklist progress appear on the public live page.</li>
+            <li>
+              Team names, project titles, member names, chosen goals, and checklist progress appear on the public live
+              page.
+            </li>
             <li>Uploaded files can be downloaded only by the organizers. Other teams and the public cannot open them.</li>
             <li>Individual ballots are never shown. Only vote counts and average scores are.</li>
             <li>
@@ -79,8 +82,8 @@ export default function Privacy() {
 
         <Section title="When it is deleted">
           <p className="text-sm">
-            When the event finishes, the organizers delete all member names, all judge usernames, every team's chosen
-            goals and checklist progress, and every uploaded file. Only team names and the anonymous vote and judge
+            When the event finishes, the organizers delete all member names, all judge usernames, every team's project
+            title, chosen goals, and checklist progress, and every uploaded file. Only team names and the anonymous vote and judge
             scores remain. The hosting
             provider's automatic database backups expire within 30 days of that.
           </p>

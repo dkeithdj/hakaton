@@ -172,7 +172,7 @@ describe("auth", () => {
     expect((await admin.get("/api/admin/data")).body.teams[0].password).toBe("pass-A");
   });
 
-  it("limits a team to changing its topics and progress", async () => {
+  it("limits a team to changing its project title, topics, and progress", async () => {
     const admin = await adminClient();
     const [teamId] = await createTeams(admin, ["A"]);
     const client = await teamClient(teamId, "A");
@@ -191,6 +191,13 @@ describe("auth", () => {
     });
     expect(updated.body.name).toBe("A");
     expect(updated.body.progress).toEqual([0, 2]);
+
+    // Voters and judges read the title from the public state.
+    const titled = await client.put(`/api/participant/teams/${teamId}`, { projectTitle: "  Flood Watch  " });
+    expect(titled.body.projectTitle).toBe("Flood Watch");
+    expect((await new Client().get("/api/state")).body.teams[0].projectTitle).toBe("Flood Watch");
+    expect((await client.put(`/api/participant/teams/${teamId}`, { projectTitle: "x".repeat(101) })).status).toBe(400);
+    expect((await client.put(`/api/participant/teams/${teamId}`, { projectTitle: "" })).body.projectTitle).toBe("");
     expect((await admin.get("/api/admin/data")).body.teams[0].password).toBe("pass-A");
   });
 });
@@ -202,7 +209,7 @@ describe("participant data", () => {
     const teamId: number = created.body.id;
     const topic = await admin.post("/api/admin/resources/topics", { title: "No Poverty" });
     const team = await teamClient(teamId, "A");
-    await team.put(`/api/participant/teams/${teamId}`, { topicIds: [topic.body.id], progress: [0, 1] });
+    await team.put(`/api/participant/teams/${teamId}`, { projectTitle: "Flood Watch", topicIds: [topic.body.id], progress: [0, 1] });
 
     const key = `teams/${teamId}/deck/backup.pdf`;
     await env.UPLOADS.put(key, "deck");
@@ -222,7 +229,7 @@ describe("participant data", () => {
 
     expect((await admin.request("DELETE", "/api/admin/participant-data")).status).toBe(200);
     const state = (await new Client().get("/api/state")).body;
-    expect(state.teams).toEqual([{ id: teamId, name: "A", members: [], topicIds: [], progress: [], sort: 0 }]);
+    expect(state.teams).toEqual([{ id: teamId, name: "A", projectTitle: "", members: [], topicIds: [], progress: [], sort: 0 }]);
     const data = (await admin.get("/api/admin/data")).body;
     expect(data.uploads).toEqual([]);
     expect(data.results).toEqual([

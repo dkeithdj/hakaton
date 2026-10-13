@@ -22,6 +22,7 @@ export const RESOURCES = {
     table: "teams",
     fields: [
       { key: "name", column: "name", type: "string", required: true, max: 100 },
+      { key: "projectTitle", column: "project_title", type: "string", max: 100 },
       { key: "members", column: "members", type: "stringArray" },
       { key: "topicIds", column: "topic_ids", type: "intArray", max: 1_000_000 },
       { key: "progress", column: "progress", type: "intArray" },
