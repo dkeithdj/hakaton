@@ -116,7 +116,7 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
           {teams.length === 0 ? (
             <p className="text-sm text-muted-foreground">The organizers have not created teams yet.</p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               {teams.map((entry) => (
                 <Button
                   key={entry.id}
@@ -124,9 +124,9 @@ function Workspace({ state, me }: { state: ClientState; me: Me }) {
                   className="h-auto justify-start py-3 text-left"
                   onClick={() => chooseTeam(entry.id)}
                 >
-                  <span className="flex flex-col">
-                    <span>{entry.name}</span>
-                    <span className="text-xs font-normal opacity-70">{entry.members.join(", ")}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate">{entry.name}</span>
+                    <span className="truncate text-xs font-normal opacity-70">{entry.members.join(", ")}</span>
                   </span>
                 </Button>
               ))}
