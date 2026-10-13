@@ -20,6 +20,8 @@ export interface PublicSettings {
   /** Epoch ms when voting closes; null when voting was never opened. */
   voteEndsAt: number | null;
   resultsPublished: boolean;
+  /** Whether teams can sign in and use their workspace. The admin opens this when the event starts. */
+  participantAccess: boolean;
 }
 
 export type Settings = PublicSettings;

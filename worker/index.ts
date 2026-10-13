@@ -123,12 +123,17 @@ async function getSession(c: AppContext): Promise<Me> {
   return { role: "participant", teamId };
 }
 
-/** Admins can use participant routes too. */
+const PARTICIPANTS_CLOSED = "Participant access is not open yet";
+
+/** Admins can use participant routes too, including while participant access is closed. */
 function requireRole(required: Role) {
   return createMiddleware<AppEnv>(async (c, next) => {
     const session = await getSession(c);
     if (session.role !== "admin" && session.role !== required) {
       throw new HTTPException(401, { message: "Not signed in" });
+    }
+    if (session.role === "participant" && !(await getSettings(c.env.DB)).participantAccess) {
+      bad(PARTICIPANTS_CLOSED, 403);
     }
     c.set("role", session.role);
     c.set("teamId", session.teamId);
@@ -186,6 +191,9 @@ app.get("/api/state", async (c) => {
   return c.json(state);
 });
 
+/** Public, so teams can sign up for the tools before participant access opens. */
+app.get("/api/tools", async (c) => c.json(await listResource<Tool>(c.env.DB, "tools")));
+
 app.get("/api/me", async (c) => c.json(await getSession(c)));
 
 app.post("/api/login", async (c) => {
@@ -200,6 +208,7 @@ app.post("/api/login", async (c) => {
     return c.json({ role, teamId: null } satisfies Me);
   }
 
+  if (!(await getSettings(c.env.DB)).participantAccess) bad(PARTICIPANTS_CLOSED, 403);
   if (typeof teamId !== "number" || !Number.isInteger(teamId)) bad("Choose your team");
   const team = await c.env.DB.prepare("SELECT password FROM teams WHERE id = ?").bind(teamId).first<{ password: string }>();
   if (!team || team.password === "" || !(await safeEqual(password, team.password))) throw wrong;
@@ -545,6 +554,22 @@ admin.put("/settings", async (c) => {
 
   await saveSettings(c.env.DB, patch);
   return c.json(await getSettings(c.env.DB));
+});
+
+admin.post("/participants/:action", async (c) => {
+  const db = c.env.DB;
+  switch (c.req.param("action")) {
+    case "open":
+      await saveSettings(db, { participantAccess: true });
+      break;
+    case "close":
+      // Team sessions stay valid, so reopening lets teams back in without signing in again.
+      await saveSettings(db, { participantAccess: false });
+      break;
+    default:
+      bad("Unknown action", 404);
+  }
+  return c.json(await getSettings(db));
 });
 
 admin.post("/timer/:action", async (c) => {

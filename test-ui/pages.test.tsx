@@ -25,6 +25,7 @@ const baseSettings: PublicSettings = {
   hackPausedRemainingMs: null,
   voteEndsAt: null,
   resultsPublished: false,
+  participantAccess: true,
 };
 
 function makeState(settings: Partial<PublicSettings> = {}, extra: Partial<EventState> = {}): EventState {
@@ -70,6 +71,10 @@ function mockApi(state: EventState, role: Role | null, hasVoted = false) {
         { id: 2, name: "Gemini", description: "Free with a Google account.", url: "https://gemini.google.com", vendor: "Google", color: "#4285F4", sort: 1 },
       ],
     },
+    "/api/tools": [
+      { id: 1, name: "Claude", description: "Thinking partner.", url: "https://claude.ai", vendor: "Anthropic", color: "#D97757", sort: 2 },
+      { id: 2, name: "Gemini", description: "Free with a Google account.", url: "https://gemini.google.com", vendor: "Google", color: "#4285F4", sort: 1 },
+    ],
     "/api/participant/uploads": [],
     "/api/admin/data": {
       settings: state.settings,
@@ -263,6 +268,34 @@ it("participant page asks for a team and its password when signed out", async ()
   expect(screen.getByRole("combobox", { name: "Team" })).toBeTruthy();
   expect((screen.getByRole("button", { name: "Enter" }) as HTMLButtonElement).disabled).toBe(true);
   expect(screen.queryByText("Your challenge")).toBeNull();
+});
+
+it("participant page stays shut until the admin opens participant access", async () => {
+  mockApi(makeState({ participantAccess: false }), "participant");
+  renderPage(<Participant />);
+  expect(await screen.findByText("The workspace is not open yet")).toBeTruthy();
+  // Guidelines and the toolbox are there to prepare with; the rest waits for the event.
+  expect(screen.getByText("Length:").tagName).toBe("STRONG");
+  expect((await screen.findByText("Start here: Google tools")).closest("div.overflow-hidden")!.textContent).toContain("Gemini");
+  expect(screen.getByRole("link", { name: /Claude/ }).getAttribute("href")).toBe("https://claude.ai");
+  expect(screen.queryByText("Prompt library")).toBeNull();
+  expect(calls.some((call) => call.path.startsWith("/api/participant/"))).toBe(false);
+  expect(screen.queryByLabelText("Team password")).toBeNull();
+  expect(screen.queryByText("Your challenge")).toBeNull();
+});
+
+it("admin opens participant access from the control tab", async () => {
+  const user = userEvent.setup();
+  const state = makeState({ participantAccess: false });
+  mockApi(state, "admin");
+  const opened = { ...state.settings, participantAccess: true };
+  routes["/api/admin/participants/open"] = opened;
+  renderPage(<Admin />);
+  const open = await screen.findByRole("button", { name: "Open access" });
+  routes["/api/state"] = { ...state, settings: opened };
+  await user.click(open);
+  expect(await screen.findByRole("button", { name: "Close access" })).toBeTruthy();
+  expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/participants/open")).toBe(true);
 });
 
 it("participant page opens only the signed-in team's workspace", async () => {

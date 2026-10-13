@@ -39,6 +39,7 @@ First-time setup: `cp .dev.vars.example .dev.vars`, then `npm run db:migrate:loc
 - `wrangler.jsonc` routes `/api/*` to the Worker first; every other path falls back to the SPA.
 - Bindings: `DB` (D1), `UPLOADS` (R2). Secrets: `ADMIN_PASSWORD`, `SESSION_SECRET`.
 - Auth uses signed cookies. `session` carries the role (`admin` or `participant`) and team id; `voter` identifies a browser for one-ballot-per-voter. `requireRole()` guards the `participant` and `admin` sub-apps, and `assertTeamAccess()` keeps a team inside its own workspace.
+- Participant access starts closed. The `participantAccess` setting gates team sign-in and every `/api/participant/*` route for teams (403 while closed); admins still get through. The admin flips it with `POST /api/admin/participants/open` or `close` from the Control tab. Closing keeps team sessions valid. While closed, `/participant` shows a preview with the presentation guidelines and the toolbox from the public `GET /api/tools`.
 - `/api/*` has CSRF protection, so non-GET requests need an `Origin` header. The test client in `test/api.test.ts` sets one.
 - Errors are thrown as `HTTPException` (see `bad()`) and returned as `{ error }` JSON by `app.onError`.
 - Admin CRUD goes through `/api/admin/resources/:resource`. To make a new table editable, add an entry to `RESOURCES` instead of writing new routes.

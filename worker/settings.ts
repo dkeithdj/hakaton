@@ -39,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hackPausedRemainingMs: null,
   voteEndsAt: null,
   resultsPublished: false,
+  participantAccess: false,
 };
 
 export async function getSettings(db: D1Database): Promise<Settings> {

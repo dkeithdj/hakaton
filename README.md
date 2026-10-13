@@ -63,7 +63,7 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Each team signs in on `/participant` by picking its team and entering that team's password. Set or view team passwords under Admin → Teams; leaving the password blank generates one. A team can only open its own workspace, and changing a team's password signs that team out.
+Each team signs in on `/participant` by picking its team and entering that team's password. Set or view team passwords under Admin → Teams; leaving the password blank generates one. A team can only open its own workspace, and changing a team's password signs that team out. Teams cannot sign in until the admin presses **Open access** under Admin → Control, so the link and passwords can be shared before the event starts. Until then the page shows the presentation guidelines and the toolbox, so participants can sign up for tools ahead of time. **Close access** locks the workspaces again without signing teams out.
 
 `npm test` runs the API tests (Workers runtime) and the page smoke tests (jsdom).
 
