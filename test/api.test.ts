@@ -362,7 +362,12 @@ describe("voting", () => {
 
     expect((await admin.post("/api/admin/voting/publish")).status).toBe(200);
     const after = await new Client().get("/api/state");
+    // toEqual is exact, so the judge and audience parts are not in the public results.
     expect(after.body.results).toEqual([
+      { teamId: a, final: expect.closeTo(82) },
+      { teamId: b, final: expect.closeTo(50) },
+    ]);
+    expect((await admin.get("/api/admin/data")).body.results).toEqual([
       { teamId: a, final: expect.closeTo(82), judgeAverage: 80, judgeCount: 1, audienceAverage: 4.5, audienceCount: 2 },
       { teamId: b, final: expect.closeTo(50), judgeAverage: 50, judgeCount: 1, audienceAverage: 2.5, audienceCount: 2 },
     ]);

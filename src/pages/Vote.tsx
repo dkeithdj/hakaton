@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FullPageMessage, PageShell, RESULTS_NOTE, ResultsList, Section } from "@/components/event";
+import { FullPageMessage, PageShell, ResultsList, Section } from "@/components/event";
 import { api, errorMessage, formatDuration, useEventState, useNow } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getPhase } from "../../shared/types";
@@ -39,7 +39,7 @@ export default function Vote() {
   return (
     <PageShell state={state} now={now}>
       {phase === "results" && state.results ? (
-        <Section title="Results" description={`${RESULTS_NOTE} · ${registered}`}>
+        <Section title="Results">
           <ResultsList teams={teams} results={state.results} />
         </Section>
       ) : settings.voteEndsAt === null ? (

@@ -14,6 +14,7 @@ import {
   getPhase,
   type Phase,
   type PublicSettings,
+  type PublicTeamResult,
   type ScheduleItem,
   type Team,
   type TeamResult,
@@ -196,7 +197,8 @@ export function ScheduleList({ schedule }: { schedule: ScheduleItem[] }) {
 
 export const RESULTS_NOTE = `${JUDGE_WEIGHT * 100}% judges, ${AUDIENCE_WEIGHT * 100}% audience vote`;
 
-export function ResultsList({ teams, results }: { teams: Team[]; results: TeamResult[] }) {
+/** Rows carrying the judge and audience parts, which only the admin gets, show them under the final score. */
+export function ResultsList({ teams, results }: { teams: Team[]; results: (PublicTeamResult | TeamResult)[] }) {
   const rows = teams
     .map((team) => ({ team, result: results.find((entry) => entry.teamId === team.id) }))
     .sort((a, b) => (b.result?.final ?? 0) - (a.result?.final ?? 0));
@@ -213,14 +215,16 @@ export function ResultsList({ teams, results }: { teams: Team[]; results: TeamRe
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-primary" style={{ width: `${result?.final ?? 0}%` }} />
           </div>
-          <p className="font-mono text-xs text-muted-foreground tabular-nums">
-            Judges {result?.judgeAverage == null ? "no scores" : `${result.judgeAverage.toFixed(1)} / ${JUDGE_MAX_SCORE}`}
-            {" · "}
-            Audience{" "}
-            {result?.audienceAverage == null
-              ? "no ratings"
-              : `${result.audienceAverage.toFixed(2)} / ${AUDIENCE_MAX_RATING} (${result.audienceCount} ${result.audienceCount === 1 ? "vote" : "votes"})`}
-          </p>
+          {result && "judgeAverage" in result && (
+            <p className="font-mono text-xs text-muted-foreground tabular-nums">
+              Judges {result.judgeAverage == null ? "no scores" : `${result.judgeAverage.toFixed(1)} / ${JUDGE_MAX_SCORE}`}
+              {" · "}
+              Audience{" "}
+              {result.audienceAverage == null
+                ? "no ratings"
+                : `${result.audienceAverage.toFixed(2)} / ${AUDIENCE_MAX_RATING} (${result.audienceCount} ${result.audienceCount === 1 ? "vote" : "votes"})`}
+            </p>
+          )}
         </li>
       ))}
     </ol>
