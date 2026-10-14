@@ -60,10 +60,10 @@ export default function Privacy() {
               page.
             </li>
             <li>Uploaded files can be downloaded only by the organizers. Other teams and the public cannot open them.</li>
-            <li>Individual ballots are never shown. Only vote counts and average scores are.</li>
+            <li>Individual ballots are never shown. Only the number of votes is.</li>
             <li>
-              Judge usernames and each judge's own scores are visible only to the organizers. The public sees the
-              judges' average for each team.
+              Judge usernames, each judge's own scores, and the judge and audience averages for each team are visible
+              only to the organizers. The public sees each team's final score.
             </li>
           </ul>
         </Section>

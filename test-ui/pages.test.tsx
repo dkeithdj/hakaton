@@ -51,6 +51,8 @@ const results: TeamResult[] = [
   { teamId: 1, final: 70, judgeAverage: 70, judgeCount: 2, audienceAverage: 3.5, audienceCount: 7 },
   { teamId: 2, final: 85, judgeAverage: 85, judgeCount: 2, audienceAverage: 4.25, audienceCount: 7 },
 ];
+// What /api/state carries: the final score without the judge and audience parts.
+const publicResults = results.map(({ teamId, final }) => ({ teamId, final }));
 
 let routes: Record<string, unknown>;
 let calls: { method: string; path: string; body: unknown }[];
@@ -162,13 +164,22 @@ it("viewer keeps the count on screen after voting closes", async () => {
   expect(screen.queryByText(/\/ 5/)).toBeNull();
 });
 
-it("viewer shows scores once results are published", async () => {
-  mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results }), null);
+it("viewer shows only final scores once results are published", async () => {
+  mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results: publicResults }), null);
   renderPage(<Viewer />);
   expect(await screen.findByText("1. Team Bravo")).toBeTruthy();
   expect(screen.getByText("85.0 / 100")).toBeTruthy();
-  expect(screen.getByText(/Judges 85\.0 \/ 100 · Audience 4\.25 \/ 5 \(7 votes\)/)).toBeTruthy();
-  expect(screen.getByText(/80% judges, 20% audience vote/)).toBeTruthy();
+  expect(screen.queryByText(/Judges|Audience/)).toBeNull();
+  expect(screen.queryByText(/80% judges/)).toBeNull();
+});
+
+it("vote page shows only final scores once results are published", async () => {
+  mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results: publicResults }), null, true);
+  renderPage(<Vote />);
+  expect(await screen.findByText("1. Team Bravo")).toBeTruthy();
+  expect(screen.getByText("85.0 / 100")).toBeTruthy();
+  expect(screen.queryByText(/Judges|Audience/)).toBeNull();
+  expect(screen.queryByText(/80% judges/)).toBeNull();
 });
 
 it("vote page waits until voting opens", async () => {
@@ -254,7 +265,7 @@ it("judge page saves pitch, demo, and impact points for each team, with voting n
 });
 
 it("judge page locks scores once results are published", async () => {
-  mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results }), null);
+  mockApi(makeState({ voteEndsAt: Date.now() - 1000, resultsPublished: true }, { results: publicResults }), null);
   routes["/api/judge"] = { judge: ana, scores: { 1: { pitch: 15, demo: 24, impact: 21 } } };
   renderPage(<Judge />);
   expect(((await screen.findByLabelText("Team Alpha pitch out of 25")) as HTMLInputElement).disabled).toBe(true);
@@ -397,6 +408,8 @@ it("admin reviews every score before publishing results", async () => {
 
   // A missing score blocks the confirmation.
   await screen.findByText(/1 score is missing/);
+  // Only the admin sees the judge and audience parts of each final score.
+  expect(screen.getByText(/Judges 85\.0 \/ 100 · Audience 4\.25 \/ 5 \(7 votes\)/)).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Publish results" }));
   let dialog = within(await screen.findByRole("alertdialog"));
   expect(dialog.getByText(/Every judge has to score every team first/)).toBeTruthy();

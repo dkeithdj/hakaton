@@ -186,7 +186,10 @@ app.get("/api/state", async (c) => {
     topics: mapRows<Topic>("topics", topics.results),
     schedule: mapRows<ScheduleItem>("schedule", schedule.results),
     ballotCount: ballots.results[0].count as number,
-    results: settings.resultsPublished ? await computeResults(db) : null,
+    // The judge and audience parts behind each final score stay with the admin.
+    results: settings.resultsPublished
+      ? (await computeResults(db)).map(({ teamId, final }) => ({ teamId, final }))
+      : null,
   };
   return c.json(state);
 });

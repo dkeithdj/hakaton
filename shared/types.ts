@@ -124,6 +124,9 @@ export interface TeamResult {
   audienceCount: number;
 }
 
+/** What everyone sees once results are published: the ranking score without the judge and audience parts. */
+export type PublicTeamResult = Pick<TeamResult, "teamId" | "final">;
+
 export function finalScore(judgeAverage: number | null, audienceAverage: number | null): number {
   const judges = ((judgeAverage ?? 0) / JUDGE_MAX_SCORE) * 100;
   const audience = ((audienceAverage ?? 0) / AUDIENCE_MAX_RATING) * 100;
@@ -161,7 +164,7 @@ export interface EventState {
   schedule: ScheduleItem[];
   ballotCount: number;
   /** Only present once the admin publishes results. */
-  results: TeamResult[] | null;
+  results: PublicTeamResult[] | null;
 }
 
 export type UploadKind = "deck" | "video";
