@@ -12,3 +12,6 @@ graphify-out/*
 !graphify-out/GRAPH_REPORT.md
 
 .claude/settings.local.json
+
+# Local database backups (contain participant data)
+backups/
